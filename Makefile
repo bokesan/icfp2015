@@ -9,7 +9,7 @@ dist/icfp2015.jar: $(shell echo src/*/*.java)
 
 clean:
 	ant clean
-	$(RM) srcdist.tar.gz
 
 srcdist:
-	tar czf srcdist.tar.gz README Makefile play_icfp2015 src
+	mkdir -f dist
+	tar czf dist/srcdist.tar.gz README Makefile play_icfp2015 src
