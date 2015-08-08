@@ -24,7 +24,8 @@ public class Unitplacer {
 
     public void calculateCommands() {
         PathFinder finder = new PathFinder(boardstate, unit, remainingUnits);
-        PathFinder.PathResult result = finder.findPath(PathFinder.Mode.ALTERNATING_DOWN_WITH_ROTATION);
+        //todo launch with multiple modes, select the one with highest points
+        PathFinder.PathResult result = finder.findPath(PathFinder.Mode.FILL_ROWS);
         branch = result.commands;
         placementPoints += boardstate.applyLocking(unit, result.unitPlace, result.rotated);
     }

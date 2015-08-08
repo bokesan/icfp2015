@@ -14,7 +14,7 @@ import java.util.List;
 
 public class PathFinder {
 
-    public enum Mode {DOWN_NO_ROTATION, ALTERNATING_DOWN, ALTERNATING_DOWN_WITH_ROTATION, CHRIS_PATH}
+    public enum Mode {DOWN_NO_ROTATION, ALTERNATING_DOWN, ALTERNATING_DOWN_WITH_ROTATION, CHRIS_PATH, FILL_ROWS}
 
     private Boardstate board;
     private final Unit unit;
@@ -32,8 +32,76 @@ public class PathFinder {
             case ALTERNATING_DOWN: return alternatingDown();
             case ALTERNATING_DOWN_WITH_ROTATION: return alternatingDownWithRotation();
             case CHRIS_PATH: return chrisPath();
+            case FILL_ROWS: return fillRows();
             default:    throw new IllegalArgumentException("Illegal Mode");
         }
+    }
+    
+    private PathResult fillRows() {
+        List<VisitedState> visited = new ArrayList<>();
+        Unit currentUnit = unit;
+        int rotation = 0;
+        CommandSequence commands = new CommandSequence();
+        Coordinate position = unit.getSpawnPoint(board.getWidth());
+        visited.add(new VisitedState(position, currentUnit));
+        List<Command> moves = board.getNonLockingMoves(unit, position, visited);
+        outer: while (!moves.isEmpty()) {
+        	//if we can fill a row, lock the unit in place
+        	if (board.doesFillRow(position, currentUnit)) {
+        		List<Command> lockingMoves = board.getLockingMoves(currentUnit, position);
+        		//there is always at least one, if we are in a full row (EAST or WEST)
+        		commands.append(lockingMoves.get(0));
+        		PathResult result = new PathResult();
+                result.rotated = rotation;
+                result.unitPlace = position;
+                result.commands = new CommandBranch(commands);
+                return result;
+        	}
+        	
+        	//check whether we can fill a row next move
+        	List<Command> fillingMoves = board.getFillingMoves(currentUnit, position);
+        	if (!fillingMoves.isEmpty()) {
+        		moves = fillingMoves; //only allow filling moves if possible
+        	} else {
+        		for (Coordinate member : currentUnit.getAbsoluteMembers(position)) {
+        			if (member.y == board.getHeight() - 1) break outer;
+        		}
+        	}
+
+        	//go through possible moves, sorted by priority
+            if (moves.contains(Command.SOUTHWEST)) {
+                commands.append(Command.SOUTHWEST);
+                position = position.move(Command.SOUTHWEST);
+            } else if (moves.contains(Command.SOUTHEAST)) {
+                commands.append(Command.SOUTHEAST);
+                position = position.move(Command.SOUTHEAST);
+            } else if (moves.contains(Command.WEST)) {
+                commands.append(Command.WEST);
+                position = position.move(Command.WEST);
+            } else if (moves.contains(Command.EAST)) {
+                commands.append(Command.EAST);
+                position = position.move(Command.EAST);
+            } else if (moves.contains(Command.CLOCKWISE)) {
+                commands.append(Command.CLOCKWISE);
+                currentUnit = currentUnit.getRotatedUnit(1);
+                rotation ++;
+            } else if (moves.contains(Command.COUNTERCLOCKWISE)) {
+                commands.append(Command.COUNTERCLOCKWISE);
+                currentUnit = currentUnit.getRotatedUnit(5);
+                rotation --;
+            } else {
+                break outer;
+            }
+            visited.add(new VisitedState(position, currentUnit));
+            moves = board.getNonLockingMoves(currentUnit, position, visited);
+        }
+        //is always valid, cannot turn up an error, will just lock the unit
+        commands.append(Command.SOUTHWEST);
+        PathResult result = new PathResult();
+        result.rotated = rotation;
+        result.unitPlace = position;
+        result.commands = new CommandBranch(commands);
+        return result;
     }
 
     private PathResult chrisPath() {

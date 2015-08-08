@@ -160,4 +160,47 @@ public class Boardstate {
     public int getHeight() {
         return height;
     }
-}
+
+	public boolean doesFillRow(Coordinate position, Unit currentUnit) {
+		boolean[][] withUnitApplied = filled.clone();
+		List<Integer> usedY = new ArrayList<>();
+        List<Coordinate> coordinates = currentUnit.getAbsoluteMembers(position);
+        for (Coordinate coordinate : coordinates) {
+            if (isOutside(coordinate)) return false;
+            if (isFilled(coordinate)) return false;
+            withUnitApplied[coordinate.x][coordinate.y] = true;
+            if (!usedY.contains(coordinate.y)) usedY.add(coordinate.y);
+        }
+        outer: for (int y : usedY) {
+        	for (int x = 0; x < width; x++) {
+        		if (!withUnitApplied[x][y]) continue outer;
+        	}
+        	return true;
+        }
+        return false;
+	}
+
+	
+ public List<Command> getLockingMoves(Unit unit, Coordinate position) {
+	 //we do not need to check visited locations, because we only take positions which are invalid, thus we cannot have been there
+	 List<Command> possible = new ArrayList<>();
+     if (!canPlaceUnit(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
+     if (!canPlaceUnit(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
+     if (!canPlaceUnit(position.move(Command.EAST), unit)) possible.add(Command.EAST);
+     if (!canPlaceUnit(position.move(Command.WEST), unit)) possible.add(Command.WEST);
+     if (!canPlaceUnit(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
+     if (!canPlaceUnit(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
+     return possible;
+	}
+
+ public List<Command> getFillingMoves(Unit unit, Coordinate position) {
+	 List<Command> possible = new ArrayList<>();
+     if (doesFillRow(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
+     if (doesFillRow(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
+     if (doesFillRow(position.move(Command.EAST), unit)) possible.add(Command.EAST);
+     if (doesFillRow(position.move(Command.WEST), unit)) possible.add(Command.WEST);
+     if (doesFillRow(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
+     if (doesFillRow(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
+     return possible;
+ 	}
+ }
