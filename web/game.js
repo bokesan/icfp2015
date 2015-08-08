@@ -631,7 +631,7 @@ function humanMove(move) {
 function runSolution() {
     var i = 0;
     var n = extSol[0].solution.length;
-    for (i = 0; i < n; i++) {
+    for (i = 0; i < n && unit; i++) {
         var move;
         var c = extSol[0].solution.charAt(i);
         if ('dqrvz1'.indexOf(c) >= 0) {
@@ -709,6 +709,8 @@ $(document).ready(function(){
         runSolution();
         drawMap();
         drawUnit();
+        $('#solution').text(encodeSolution(solution));
+        $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned);
     });
     
     size = 40;
