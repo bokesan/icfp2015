@@ -162,7 +162,7 @@ public class Boardstate {
     }
 
 	public boolean doesFillRow(Coordinate position, Unit currentUnit) {
-		boolean[][] withUnitApplied = filled.clone();
+		boolean[][] withUnitApplied = clone2DArray(filled);
 		List<Integer> usedY = new ArrayList<>();
         List<Coordinate> coordinates = currentUnit.getAbsoluteMembers(position);
         for (Coordinate coordinate : coordinates) {
@@ -178,6 +178,17 @@ public class Boardstate {
         	return true;
         }
         return false;
+	}
+	
+	public static boolean[][] clone2DArray(boolean[][] array) {
+	    int rows=array.length;
+	    //clone the 'shallow' structure of array
+	    boolean[][] newArray =(boolean[][]) array.clone();
+	    //clone the 'deep' structure of array
+	    for(int row=0;row<rows;row++){
+	        newArray[row]=(boolean[]) array[row].clone();
+	    }
+	    return newArray;
 	}
 
 	

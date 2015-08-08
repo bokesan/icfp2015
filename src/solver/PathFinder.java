@@ -56,7 +56,7 @@ public class PathFinder {
                 result.unitPlace = position;
                 result.commands = new CommandBranch(commands);
                 return result;
-        	}
+        	} 
         	
         	//check whether we can fill a row next move
         	List<Command> fillingMoves = board.getFillingMoves(currentUnit, position);
