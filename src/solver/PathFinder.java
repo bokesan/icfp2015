@@ -14,7 +14,7 @@ import java.util.List;
 
 public class PathFinder {
 
-    public enum Mode {DOWN_NO_ROTATION, ALTERNATING_DOWN, ALTERNATING_DOWN_WITH_ROTATION, CHRIS_PATH, FILL_ROWS}
+    public enum Mode {DOWN_NO_ROTATION, ALTERNATING_DOWN, ALTERNATING_DOWN_WITH_ROTATION, CHRIS_PATH, FILL_ROWS_1, FILL_ROWS_2, FILL_ROWS_3, FILL_ROWS_4, WITH_POWER}
 
     private Boardstate board;
     private final Unit unit;
@@ -32,12 +32,20 @@ public class PathFinder {
             case ALTERNATING_DOWN: return alternatingDown();
             case ALTERNATING_DOWN_WITH_ROTATION: return alternatingDownWithRotation();
             case CHRIS_PATH: return chrisPath();
-            case FILL_ROWS: return fillRows();
+            case FILL_ROWS_1: return fillRows(1);
+            case FILL_ROWS_2: return fillRows(2);
+            case FILL_ROWS_3: return fillRows(3);
+            case FILL_ROWS_4: return fillRows(4);
+            case WITH_POWER: return withPower();
             default:    throw new IllegalArgumentException("Illegal Mode");
         }
     }
     
-    private PathResult fillRows() {
+    private PathResult withPower() {
+		return fillRows(0);
+	}
+
+	private PathResult fillRows(int depth) {
         List<VisitedState> visited = new ArrayList<>();
         Unit currentUnit = unit;
         int rotation = 0;
@@ -59,7 +67,7 @@ public class PathFinder {
         	} 
         	
         	//check whether we can fill a row next move
-        	List<Command> fillingMoves = board.getFillingMoves(4, currentUnit, position);
+        	List<Command> fillingMoves = board.getFillingMoves(depth, currentUnit, position);
         	if (!fillingMoves.isEmpty()) {
         		//check whether one of the filling moves is allowed
         		List<Command> allowed = new ArrayList<>();

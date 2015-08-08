@@ -21,4 +21,55 @@ public enum Command {
     public List<Character> getPossibleCharacters() {
         return new ArrayList<>(possibleCharacters);
     }
+    
+    public static List<Command> translate(String powerWord) {
+    	List<Command> commands = new ArrayList<>();
+    	for (Character c : powerWord.toCharArray()) {
+    		Command command = getCommandForChar(c);
+    		if (command != null) commands.add(command);
+    	}
+    	return commands;
+    }
+
+	private static Command getCommandForChar(Character c) {
+		switch (c) {
+		case 'b':
+		case 'c':
+		case 'e':
+		case 'f':
+		case 'y':
+		case '2': return EAST;
+		case 'p':
+		case '\'':
+		case '!':
+		case '.':
+		case '0':
+		case '3': return WEST;
+		case 'l':
+		case 'm':
+		case 'n':
+		case 'o':
+		case ' ':
+		case '5': return SOUTHEAST;
+		case 'a':
+		case 'g':
+		case 'h':
+		case 'i':
+		case 'j':
+		case '4': return SOUTHWEST;
+		case 'd':
+		case 'q':
+		case 'r':
+		case 'v':
+		case 'z':
+		case '1': return CLOCKWISE;
+		case 'k':
+		case 's':
+		case 't':
+		case 'u':
+		case 'w':
+		case 'x': return COUNTERCLOCKWISE;
+		default: return null;
+		}
+	}
 }

@@ -109,6 +109,15 @@ public class Boardstate {
         linesClearedOld = linesCleared;
         return points;
     }
+    
+    public int calculatePotentialPoints(Unit unit, Coordinate unitPlace, int rotated) {
+    	boolean[][] backupFilled = clone2DArray(filled);
+    	int backupLinesClearedOld = linesClearedOld;
+    	int points = applyLocking(unit, unitPlace, rotated);
+    	linesClearedOld = backupLinesClearedOld;
+    	filled = backupFilled;
+    	return points;
+    }
 
     private int clearFullLines() {
         int linesCleared = 0;

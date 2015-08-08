@@ -3,8 +3,10 @@ package solver;
 
 import commands.CommandBranch;
 import main.Boardstate;
+import solver.PathFinder.PathResult;
 import units.Unit;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Unitplacer {
@@ -23,11 +25,28 @@ public class Unitplacer {
     }
 
     public void calculateCommands() {
-        PathFinder finder = new PathFinder(boardstate, unit, remainingUnits);
-        //todo launch with multiple modes, select the one with highest points
-        PathFinder.PathResult result = finder.findPath(PathFinder.Mode.CHRIS_PATH);
-        branch = result.commands;
-        placementPoints += boardstate.applyLocking(unit, result.unitPlace, result.rotated);
+    	PathResult bestResult = null;
+    	int bestPoints = 0;
+    	//try different modes, pick best one
+    	List<PathResult> results = new ArrayList<>();
+    	//todo maybe in parallel
+        results.add(new PathFinder(boardstate, unit, remainingUnits).findPath(PathFinder.Mode.FILL_ROWS_1));
+        results.add(new PathFinder(boardstate, unit, remainingUnits).findPath(PathFinder.Mode.FILL_ROWS_2));
+        results.add(new PathFinder(boardstate, unit, remainingUnits).findPath(PathFinder.Mode.FILL_ROWS_3));
+        results.add(new PathFinder(boardstate, unit, remainingUnits).findPath(PathFinder.Mode.FILL_ROWS_4));
+        results.add(new PathFinder(boardstate, unit, remainingUnits).findPath(PathFinder.Mode.CHRIS_PATH));
+        results.add(new PathFinder(boardstate, unit, remainingUnits).findPath(PathFinder.Mode.WITH_POWER));
+        
+        for (PathResult result : results) {
+        	int points = boardstate.calculatePotentialPoints(unit, result.unitPlace, result.rotated);
+        	if (points > bestPoints || bestResult == null) {
+        		bestPoints = points;
+        		bestResult = result;
+        	}
+        }
+        
+        branch = bestResult.commands;
+        placementPoints = boardstate.applyLocking(unit, bestResult.unitPlace, bestResult.rotated);
     }
 
     public CommandBranch getCommandBranch() {
