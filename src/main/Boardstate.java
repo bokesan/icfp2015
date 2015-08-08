@@ -205,13 +205,26 @@ public class Boardstate {
 	}
 
  public List<Command> getFillingMoves(Unit unit, Coordinate position) {
+	 return getFillingMoves(0, unit, position);
+ 	}
+ 
+ public List<Command> getFillingMoves(int depth, Unit unit, Coordinate position) {
 	 List<Command> possible = new ArrayList<>();
-     if (doesFillRow(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
-     if (doesFillRow(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
-     if (doesFillRow(position.move(Command.EAST), unit)) possible.add(Command.EAST);
-     if (doesFillRow(position.move(Command.WEST), unit)) possible.add(Command.WEST);
-     if (doesFillRow(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
-     if (doesFillRow(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
+	 if (depth == 0) {
+		 if (doesFillRow(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
+		 if (doesFillRow(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
+		 if (doesFillRow(position.move(Command.EAST), unit)) possible.add(Command.EAST);
+		 if (doesFillRow(position.move(Command.WEST), unit)) possible.add(Command.WEST);
+		 if (doesFillRow(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
+		 if (doesFillRow(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
+	 } else {
+		 if (!getFillingMoves(depth - 1, unit, position.move(Command.SOUTHEAST)).isEmpty()) possible.add(Command.SOUTHEAST);
+		 if (!getFillingMoves(depth - 1, unit, position.move(Command.EAST)).isEmpty()) possible.add(Command.EAST);
+		 if (!getFillingMoves(depth - 1, unit, position.move(Command.SOUTHWEST)).isEmpty()) possible.add(Command.SOUTHWEST);
+		 if (!getFillingMoves(depth - 1, unit, position.move(Command.WEST)).isEmpty()) possible.add(Command.WEST);
+		 if (!getFillingMoves(depth - 1, unit.getRotatedUnit(1), position).isEmpty()) possible.add(Command.CLOCKWISE);
+		 if (!getFillingMoves(depth - 1, unit.getRotatedUnit(5), position).isEmpty()) possible.add(Command.COUNTERCLOCKWISE);
+	 }
      return possible;
  	}
  }

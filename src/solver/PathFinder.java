@@ -59,9 +59,14 @@ public class PathFinder {
         	} 
         	
         	//check whether we can fill a row next move
-        	List<Command> fillingMoves = board.getFillingMoves(currentUnit, position);
+        	List<Command> fillingMoves = board.getFillingMoves(4, currentUnit, position);
         	if (!fillingMoves.isEmpty()) {
-        		moves = fillingMoves; //only allow filling moves if possible
+        		//check whether one of the filling moves is allowed
+        		List<Command> allowed = new ArrayList<>();
+        		for (Command command : fillingMoves) {
+        			if (moves.contains(command)) allowed.add(command);
+        		}
+        		if (!allowed.isEmpty()) moves = allowed; //only allow filling moves if possible
         	} else {
         		for (Coordinate member : currentUnit.getAbsoluteMembers(position)) {
         			if (member.y == board.getHeight() - 1) break outer;
