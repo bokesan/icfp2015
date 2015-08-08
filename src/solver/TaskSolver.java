@@ -39,7 +39,7 @@ public class TaskSolver {
         CommandPathOptions options = new CommandPathOptions();
         while (nextUnitCanSpawn()) {
             Unitplacer placer = new Unitplacer(board, stream.popNextUnit(), stream.getRemainingStream());
-            placer.calculateCommands();
+            placer.calculateCommands(powerWords);
             options.addBranch(placer.getCommandBranch());
             points += placer.getPlacementPoints();
         }
