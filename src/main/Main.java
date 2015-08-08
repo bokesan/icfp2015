@@ -50,7 +50,7 @@ public class Main {
             JSONObject output = new JSONObject();
             output.put("problemId", solution.id);
             output.put("seed", solution.seed);
-            output.put("tag", "multi-effort-2");
+            output.put("tag", "ei!-1");
             output.put("solution", solution.commandString);
             combined.put(output);
             points += solution.points;

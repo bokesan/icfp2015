@@ -33,7 +33,7 @@ public class Unitplacer {
         results.add(new PathFinder(boardstate, unit, remainingUnits).findPath(PathFinder.Mode.FILL_ROWS_1));
         results.add(new PathFinder(boardstate, unit, remainingUnits).findPath(PathFinder.Mode.FILL_ROWS_2));
         results.add(new PathFinder(boardstate, unit, remainingUnits).findPath(PathFinder.Mode.FILL_ROWS_3));
-        results.add(new PathFinder(boardstate, unit, remainingUnits).findPath(PathFinder.Mode.FILL_ROWS_4));
+        //results.add(new PathFinder(boardstate, unit, remainingUnits).findPath(PathFinder.Mode.FILL_ROWS_4));
         results.add(new PathFinder(boardstate, unit, remainingUnits).findPath(PathFinder.Mode.CHRIS_PATH));
         results.add(new PathFinder(boardstate, unit, remainingUnits).findPath(PathFinder.Mode.WITH_POWER));
         

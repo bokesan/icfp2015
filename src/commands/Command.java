@@ -10,10 +10,10 @@ public enum Command {
     private List<Character> possibleCharacters;
 
     static {
-        EAST.possibleCharacters = Arrays.asList('b', 'c', 'e', 'f', 'y', '2');
-        WEST.possibleCharacters = Arrays.asList('p', '\'', '!', '.', '0', '3');
+        EAST.possibleCharacters = Arrays.asList('e', 'b', 'c', 'f', 'y', '2');
+        WEST.possibleCharacters = Arrays.asList('!', 'p', '\'', '.', '0', '3');
         SOUTHEAST.possibleCharacters = Arrays.asList('l', 'm', 'n', 'o', ' ', '5');
-        SOUTHWEST.possibleCharacters = Arrays.asList('a', 'g', 'h', 'i', 'j', '4');
+        SOUTHWEST.possibleCharacters = Arrays.asList('i', 'a', 'g', 'h', 'j', '4');
         CLOCKWISE.possibleCharacters = Arrays.asList('d', 'q', 'r', 'v', 'z', '1');
         COUNTERCLOCKWISE.possibleCharacters = Arrays.asList('k', 's', 't', 'u', 'w', 'x');
     }

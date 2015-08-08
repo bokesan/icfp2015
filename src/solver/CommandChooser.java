@@ -7,6 +7,8 @@ import commands.CommandPathOptions;
 import commands.CommandSequence;
 
 import java.util.List;
+import java.util.regex.Pattern;
+
 
 public class CommandChooser {
 
@@ -37,11 +39,26 @@ public class CommandChooser {
                 commandBuilder.append(command.getPossibleCharacters().get(0));
             }
         }
-        //todo calculate points for power words once they matter
         commandString = commandBuilder.toString();
+        calculatePowerwordPoints();
     }
 
-    public int getPowerWordPoints() {
+    private void calculatePowerwordPoints() {
+		// for ei!
+		points += getPoints("ei!".length(), countOccurences(commandString, "ei!"));
+	}
+    
+    private int countOccurences(String base, String power) {
+    	return base.split(Pattern.quote(power), -1).length - 1;
+    }
+    
+    private int getPoints(int len, int reps) {
+    	int points = 2 * len * reps;
+    	if (reps > 0) points += 300;
+    	return points;
+    }
+
+	public int getPowerWordPoints() {
         return points;
     }
 
