@@ -18,11 +18,13 @@ public class PathFinder {
 
     private Boardstate board;
     private final Unit unit;
+    private List<String> powerWords;
     List<Unit> remainingUnits;
 
-    public PathFinder(Boardstate board, Unit unit, List<Unit> remainingUnits) {
+    public PathFinder(Boardstate board, Unit unit, List<Unit> remainingUnits, List<String> powerWords) {
         this.board = board;
         this.unit = unit;
+        this.powerWords = powerWords;
         this.remainingUnits = remainingUnits;
     }
 
@@ -76,10 +78,25 @@ public class PathFinder {
         			if (member.y == board.getHeight() - 1) break outer;
         		}
         	}
+        	
+        	//do a cthulhu / ia! ia! / r'lyeh/ yuggoth power word if possible
+        	//todo use power word list from arguments
+        	DoPower power = new DoPower(board, commands, visited, position, currentUnit, rotation);
+        	for (String word : powerWords) {
+        		power.doIfPossible(word);
+        	}
+        	if (power.moved) {
+        		position = power.getNewPosition();
+        		currentUnit = power.getCurrentUnit();
+        		rotation = power.getNewRotation();
+        		moves = board.getNonLockingMoves(currentUnit, position, visited);
+        	}
+        	
 
         	//go through possible moves, sorted by priority
             if (moves.contains(Command.SOUTHWEST)) {
             	if (moves.contains(Command.EAST) && moves.contains(Command.SOUTHEAST)) {
+            		//replace simple move with ei! powerword if possible
             		commands.append(Command.EAST).append(Command.SOUTHWEST).append(Command.WEST);
             		visited.add(new VisitedState(position.move(Command.EAST), currentUnit));
             		visited.add(new VisitedState(position.move(Command.SOUTHEAST), currentUnit));
@@ -110,13 +127,36 @@ public class PathFinder {
             visited.add(new VisitedState(position, currentUnit));
             moves = board.getNonLockingMoves(currentUnit, position, visited);
         }
-        //is always valid, cannot turn up an error, will just lock the unit
-        commands.append(Command.SOUTHWEST);
+        //see whether we can snatch a word when locking
+        List<Command> lockMoves = board.getLockingMoves(currentUnit, position);
+        commands.append(checkForWords(lockMoves, commands));
         PathResult result = new PathResult();
         result.rotated = rotation;
         result.unitPlace = position;
         result.commands = new CommandBranch(commands);
         return result;
+	}
+
+	private Command checkForWords(List<Command> lockMoves, CommandSequence commands) {
+		//todo get power words from args
+		List<List<Command>> patterns = new ArrayList<>();
+		List<List<Command>> possible = new ArrayList<>();
+		patterns.add(Command.translate("cthulhu"));
+		patterns.add(Command.translate("ei!"));
+		patterns.add(Command.translate("ia! ia!"));
+		patterns.add(Command.translate("r'lyeh"));
+		patterns.add(Command.translate("yuggoth"));
+		List<Command> previous = commands.getCommands();
+		outer: for (List<Command> pattern : patterns) {
+			if (previous.size() + 1 < pattern.size()) continue;
+			if (!lockMoves.contains(pattern.get(pattern.size() - 1))) continue;
+			for (int i = 2; i <= pattern.size(); i++) {
+				if (!(pattern.get(pattern.size() - i) == previous.get(previous.size() - i + 1))) continue outer;
+			}
+			return pattern.get(pattern.size() - 1);
+		}
+		//todo pick one to continue or start a pattern
+		return lockMoves.get(0);
 	}
 
 	private PathResult fillRows(int depth) {

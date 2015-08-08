@@ -78,11 +78,11 @@ public class Boardstate {
         return canPlaceUnit(pivotSpawnPoint, unit);
     }
 
-    private boolean canPlaceUnit(Coordinate pivotPoint, Unit unit) {
+    public boolean canPlaceUnit(Coordinate pivotPoint, Unit unit) {
         return canPlaceUnit(pivotPoint, unit, new ArrayList<VisitedState>());
     }
 
-    private boolean canPlaceUnit(Coordinate pivotPoint, Unit unit, List<VisitedState> visited) {
+    public boolean canPlaceUnit(Coordinate pivotPoint, Unit unit, List<VisitedState> visited) {
         if (visited.contains(new VisitedState(pivotPoint, unit))) return false;
         List<Coordinate> coordinates = unit.getAbsoluteMembers(pivotPoint);
         for (Coordinate coordinate : coordinates) {

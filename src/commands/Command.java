@@ -17,6 +17,7 @@ public enum Command {
         CLOCKWISE.possibleCharacters = Arrays.asList('d', 'q', 'r', 'v', 'z', '1');
         COUNTERCLOCKWISE.possibleCharacters = Arrays.asList('k', 's', 't', 'u', 'w', 'x');
     }
+    
 
     public List<Character> getPossibleCharacters() {
         return new ArrayList<>(possibleCharacters);

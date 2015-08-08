@@ -34,18 +34,32 @@ public class CommandChooser {
         for (CommandBranch branch : commandOptions.getBranches()) {
             //todo change from taking first branch when power words work
             CommandSequence sequence = branch.getOptions().get(0);
-            for (Command command : sequence.getCommands()) {
-                //todo change from taking first character when power words matter
-                commandBuilder.append(command.getPossibleCharacters().get(0));
+            List<Command> commands = sequence.getCommands();
+            while (!commands.isEmpty()) {
+            	String chars = getPowerPrefix(commands);
+            	commands = commands.subList(chars.length(), commands.size());
+            	commandBuilder.append(chars);
             }
         }
         commandString = commandBuilder.toString();
         calculatePowerwordPoints();
     }
 
-    private void calculatePowerwordPoints() {
-		// for ei!
-		points += getPoints("ei!".length(), countOccurences(commandString, "ei!"));
+    private String getPowerPrefix(List<Command> commands) {
+		for (String word : powerWords) {
+			if (word.length() > commands.size()) continue;
+			List<Command> wordCommands = Command.translate(word);
+			if (commands.subList(0, wordCommands.size()).equals(wordCommands)) {
+				return word;
+			}
+		}
+		return commands.get(0).getPossibleCharacters().get(0).toString();
+	}
+
+	private void calculatePowerwordPoints() {
+    	for (String word : powerWords) {
+    		points += getPoints(word.length(), countOccurences(commandString, word));
+    	}
 	}
     
     private int countOccurences(String base, String power) {
