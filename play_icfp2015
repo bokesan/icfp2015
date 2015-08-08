@@ -1,8 +1,27 @@
 #!/bin/sh
+
+prog_args="$*"
+megabytes="1024"
+
+while [[ $# > 1 ]]
+do
+    key="$1"
+    case $key in
+        -m)
+            megabytes="$2"
+            shift
+            ;;
+        *)
+            # other
+            ;;
+    esac
+    shift
+done
+
 THE_CLASSPATH=dist/icfp2015.jar
 for i in `ls ./lib/*.jar`
 do
   THE_CLASSPATH=${THE_CLASSPATH}:${i}
 done
 
-java -cp ${THE_CLASSPATH} main/Main $*
+java -Xmx${megabytes}m -cp ${THE_CLASSPATH} main/Main $prog_args
