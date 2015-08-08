@@ -3,6 +3,8 @@ package main;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import commands.Command;
 import solver.TaskSolver;
 import units.SourceStream;
 
@@ -30,10 +32,10 @@ public class Main {
                 solution.id = id;
                 solutions.add(solution);
             }
-            //createJsonOutput(solutions);
-            //solutions.clear();
+            createJsonOutput(solutions);
+            solutions.clear();
         }
-        createJsonOutput(solutions);
+        //createJsonOutput(solutions);
     }
 
     private static void createJsonOutput(List<Solution> solutions) {
@@ -43,19 +45,19 @@ public class Main {
             JSONObject output = new JSONObject();
             output.put("problemId", solution.id);
             output.put("seed", solution.seed);
-            //output.put("tag", "");
+            output.put("tag", "ia! added");
             output.put("solution", solution.commandString);
             combined.put(output);
             points += solution.points;
         }
         int average = (int) Math.floor(points / solutions.size());
         String file = solutions.get(0).id + "_" + solutions.size() + "_" + average;
-        //writeOutputFile(combined.toString(), file);
-        System.out.println(combined.toString());
+        writeOutputFile(combined.toString(), file);
+        //System.out.println(combined.toString());
     }
 
     private static void writeOutputFile(String result, String filename) {
-        String fileName = filename + ".json";
+        String fileName = "results/" + filename + ".json";
         PrintWriter writer;
         try {
             writer = new PrintWriter(fileName, "UTF-8");

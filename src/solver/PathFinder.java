@@ -14,15 +14,17 @@ import java.util.List;
 
 public class PathFinder {
 
-    public enum Mode {DOWN_NO_ROTATION, ALTERNATING_DOWN, ALTERNATING_DOWN_WITH_ROTATION, CHRIS_PATH}
+    public enum Mode {DOWN_NO_ROTATION, ALTERNATING_DOWN, ALTERNATING_DOWN_WITH_ROTATION, CHRIS_PATH, FILL_ROWS_1, FILL_ROWS_2, FILL_ROWS_3, FILL_ROWS_4, WITH_POWER}
 
     private Boardstate board;
     private final Unit unit;
+    private List<String> powerWords;
     List<Unit> remainingUnits;
 
-    public PathFinder(Boardstate board, Unit unit, List<Unit> remainingUnits) {
+    public PathFinder(Boardstate board, Unit unit, List<Unit> remainingUnits, List<String> powerWords) {
         this.board = board;
         this.unit = unit;
+        this.powerWords = powerWords;
         this.remainingUnits = remainingUnits;
     }
 
@@ -32,8 +34,201 @@ public class PathFinder {
             case ALTERNATING_DOWN: return alternatingDown();
             case ALTERNATING_DOWN_WITH_ROTATION: return alternatingDownWithRotation();
             case CHRIS_PATH: return chrisPath();
+            case FILL_ROWS_1: return withPower(1);
+            case FILL_ROWS_2: return withPower(2);
+            case FILL_ROWS_3: return withPower(3);
+            case FILL_ROWS_4: return withPower(4);
+            case WITH_POWER: return withPower(0);
             default:    throw new IllegalArgumentException("Illegal Mode");
         }
+    }
+    
+    private PathResult withPower(int depth) {
+    	List<VisitedState> visited = new ArrayList<>();
+        Unit currentUnit = unit;
+        int rotation = 0;
+        CommandSequence commands = new CommandSequence();
+        Coordinate position = unit.getSpawnPoint(board.getWidth());
+        visited.add(new VisitedState(position, currentUnit));
+        List<Command> moves = board.getNonLockingMoves(unit, position, visited);
+        outer: while (!moves.isEmpty()) {
+        	//if we can fill a row, lock the unit in place
+        	if (board.doesFillRow(position, currentUnit)) {
+        		List<Command> lockingMoves = board.getLockingMoves(currentUnit, position);
+        		//there is always at least one, if we are in a full row (EAST or WEST)
+        		commands.append(lockingMoves.get(0));
+        		PathResult result = new PathResult();
+                result.rotated = rotation;
+                result.unitPlace = position;
+                result.commands = new CommandBranch(commands);
+                return result;
+        	} 
+        	
+        	//check whether we can fill a row next move
+        	List<Command> fillingMoves = board.getFillingMoves(depth, currentUnit, position);
+        	if (!fillingMoves.isEmpty()) {
+        		//check whether one of the filling moves is allowed
+        		List<Command> allowed = new ArrayList<>();
+        		for (Command command : fillingMoves) {
+        			if (moves.contains(command)) allowed.add(command);
+        		}
+        		if (!allowed.isEmpty()) moves = allowed; //only allow filling moves if possible
+        	} else {
+        		for (Coordinate member : currentUnit.getAbsoluteMembers(position)) {
+        			if (member.y == board.getHeight() - 1) break outer;
+        		}
+        	}
+        	
+        	//do a cthulhu / ia! ia! / r'lyeh/ yuggoth power word if possible
+        	//todo use power word list from arguments
+        	DoPower power = new DoPower(board, commands, visited, position, currentUnit, rotation);
+        	for (String word : powerWords) {
+        		power.doIfPossible(word);
+        	}
+        	if (power.moved) {
+        		position = power.getNewPosition();
+        		currentUnit = power.getCurrentUnit();
+        		rotation = power.getNewRotation();
+        		moves = board.getNonLockingMoves(currentUnit, position, visited);
+        	}
+        	
+
+        	//go through possible moves, sorted by priority
+            if (moves.contains(Command.SOUTHWEST)) {
+            	if (moves.contains(Command.EAST) && moves.contains(Command.SOUTHEAST)) {
+            		//replace simple move with ei! powerword if possible
+            		commands.append(Command.EAST).append(Command.SOUTHWEST).append(Command.WEST);
+            		visited.add(new VisitedState(position.move(Command.EAST), currentUnit));
+            		visited.add(new VisitedState(position.move(Command.SOUTHEAST), currentUnit));
+            	} else {
+            		commands.append(Command.SOUTHWEST);
+            	}
+                position = position.move(Command.SOUTHWEST);
+            } else if (moves.contains(Command.SOUTHEAST)) {
+                commands.append(Command.SOUTHEAST);
+                position = position.move(Command.SOUTHEAST);
+            } else if (moves.contains(Command.WEST)) {
+                commands.append(Command.WEST);
+                position = position.move(Command.WEST);
+            } else if (moves.contains(Command.EAST)) {
+                commands.append(Command.EAST);
+                position = position.move(Command.EAST);
+            } else if (moves.contains(Command.CLOCKWISE)) {
+                commands.append(Command.CLOCKWISE);
+                currentUnit = currentUnit.getRotatedUnit(1);
+                rotation ++;
+            } else if (moves.contains(Command.COUNTERCLOCKWISE)) {
+                commands.append(Command.COUNTERCLOCKWISE);
+                currentUnit = currentUnit.getRotatedUnit(5);
+                rotation --;
+            } else {
+                break outer;
+            }
+            visited.add(new VisitedState(position, currentUnit));
+            moves = board.getNonLockingMoves(currentUnit, position, visited);
+        }
+        //see whether we can snatch a word when locking
+        List<Command> lockMoves = board.getLockingMoves(currentUnit, position);
+        commands.append(checkForWords(lockMoves, commands));
+        PathResult result = new PathResult();
+        result.rotated = rotation;
+        result.unitPlace = position;
+        result.commands = new CommandBranch(commands);
+        return result;
+	}
+
+	private Command checkForWords(List<Command> lockMoves, CommandSequence commands) {
+		//todo get power words from args
+		List<List<Command>> patterns = new ArrayList<>();
+		List<List<Command>> possible = new ArrayList<>();
+		patterns.add(Command.translate("cthulhu"));
+		patterns.add(Command.translate("ei!"));
+		patterns.add(Command.translate("ia! ia!"));
+		patterns.add(Command.translate("r'lyeh"));
+		patterns.add(Command.translate("yuggoth"));
+		List<Command> previous = commands.getCommands();
+		outer: for (List<Command> pattern : patterns) {
+			if (previous.size() + 1 < pattern.size()) continue;
+			if (!lockMoves.contains(pattern.get(pattern.size() - 1))) continue;
+			for (int i = 2; i <= pattern.size(); i++) {
+				if (!(pattern.get(pattern.size() - i) == previous.get(previous.size() - i + 1))) continue outer;
+			}
+			return pattern.get(pattern.size() - 1);
+		}
+		//todo pick one to continue or start a pattern
+		return lockMoves.get(0);
+	}
+
+	private PathResult fillRows(int depth) {
+        List<VisitedState> visited = new ArrayList<>();
+        Unit currentUnit = unit;
+        int rotation = 0;
+        CommandSequence commands = new CommandSequence();
+        Coordinate position = unit.getSpawnPoint(board.getWidth());
+        visited.add(new VisitedState(position, currentUnit));
+        List<Command> moves = board.getNonLockingMoves(unit, position, visited);
+        outer: while (!moves.isEmpty()) {
+        	//if we can fill a row, lock the unit in place
+        	if (board.doesFillRow(position, currentUnit)) {
+        		List<Command> lockingMoves = board.getLockingMoves(currentUnit, position);
+        		//there is always at least one, if we are in a full row (EAST or WEST)
+        		commands.append(lockingMoves.get(0));
+        		PathResult result = new PathResult();
+                result.rotated = rotation;
+                result.unitPlace = position;
+                result.commands = new CommandBranch(commands);
+                return result;
+        	} 
+        	
+        	//check whether we can fill a row next move
+        	List<Command> fillingMoves = board.getFillingMoves(depth, currentUnit, position);
+        	if (!fillingMoves.isEmpty()) {
+        		//check whether one of the filling moves is allowed
+        		List<Command> allowed = new ArrayList<>();
+        		for (Command command : fillingMoves) {
+        			if (moves.contains(command)) allowed.add(command);
+        		}
+        		if (!allowed.isEmpty()) moves = allowed; //only allow filling moves if possible
+        	} else {
+        		for (Coordinate member : currentUnit.getAbsoluteMembers(position)) {
+        			if (member.y == board.getHeight() - 1) break outer;
+        		}
+        	}
+
+        	//go through possible moves, sorted by priority
+            if (moves.contains(Command.SOUTHWEST)) {
+                commands.append(Command.SOUTHWEST);
+                position = position.move(Command.SOUTHWEST);
+            } else if (moves.contains(Command.SOUTHEAST)) {
+                commands.append(Command.SOUTHEAST);
+                position = position.move(Command.SOUTHEAST);
+            } else if (moves.contains(Command.WEST)) {
+                commands.append(Command.WEST);
+                position = position.move(Command.WEST);
+            } else if (moves.contains(Command.EAST)) {
+                commands.append(Command.EAST);
+                position = position.move(Command.EAST);
+            } else if (moves.contains(Command.CLOCKWISE)) {
+                commands.append(Command.CLOCKWISE);
+                currentUnit = currentUnit.getRotatedUnit(1);
+                rotation ++;
+            } else if (moves.contains(Command.COUNTERCLOCKWISE)) {
+                commands.append(Command.COUNTERCLOCKWISE);
+                currentUnit = currentUnit.getRotatedUnit(5);
+                rotation --;
+            } else {
+                break outer;
+            }
+            visited.add(new VisitedState(position, currentUnit));
+            moves = board.getNonLockingMoves(currentUnit, position, visited);
+        }
+        //is always valid, cannot turn up an error, will just lock the unit
+        commands.append(Command.SOUTHWEST);
+        PathResult result = new PathResult();
+        result.rotated = rotation;
+        result.unitPlace = position;
+        result.commands = new CommandBranch(commands);
+        return result;
     }
 
     private PathResult chrisPath() {

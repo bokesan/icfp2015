@@ -3,8 +3,10 @@ package solver;
 
 import commands.CommandBranch;
 import main.Boardstate;
+import solver.PathFinder.PathResult;
 import units.Unit;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Unitplacer {
@@ -22,11 +24,30 @@ public class Unitplacer {
         placementPoints = 0;
     }
 
-    public void calculateCommands() {
-        PathFinder finder = new PathFinder(boardstate, unit, remainingUnits);
-        PathFinder.PathResult result = finder.findPath(PathFinder.Mode.ALTERNATING_DOWN_WITH_ROTATION);
-        branch = result.commands;
-        placementPoints += boardstate.applyLocking(unit, result.unitPlace, result.rotated);
+    public void calculateCommands(List<String> powerWords) {
+    	PathResult bestResult = null;
+    	int bestPoints = 0;
+    	//try different modes, pick best one
+    	List<PathResult> results = new ArrayList<>();
+    	//todo maybe in parallel
+    	//todo include point calcs for power words
+        results.add(new PathFinder(boardstate, unit, remainingUnits, powerWords).findPath(PathFinder.Mode.FILL_ROWS_1));
+        results.add(new PathFinder(boardstate, unit, remainingUnits, powerWords).findPath(PathFinder.Mode.FILL_ROWS_2));
+        results.add(new PathFinder(boardstate, unit, remainingUnits, powerWords).findPath(PathFinder.Mode.FILL_ROWS_3));
+        results.add(new PathFinder(boardstate, unit, remainingUnits, powerWords).findPath(PathFinder.Mode.FILL_ROWS_4));
+        //results.add(new PathFinder(boardstate, unit, remainingUnits, powerWords).findPath(PathFinder.Mode.CHRIS_PATH));
+        results.add(new PathFinder(boardstate, unit, remainingUnits, powerWords).findPath(PathFinder.Mode.WITH_POWER));
+        
+        for (PathResult result : results) {
+        	int points = boardstate.calculatePotentialPoints(unit, result.unitPlace, result.rotated);
+        	if (points > bestPoints || bestResult == null) {
+        		bestPoints = points;
+        		bestResult = result;
+        	}
+        }
+        
+        branch = bestResult.commands;
+        placementPoints = boardstate.applyLocking(unit, bestResult.unitPlace, bestResult.rotated);
     }
 
     public CommandBranch getCommandBranch() {
