@@ -1,0 +1,70 @@
+<html>
+<head>
+<title>ICFP Contest 2015 - A Storm of Minds</title>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="game.js" ></script>
+
+<meta name='author' content='Christoph Breitkopf'>
+<meta name='copyright' content='&copy; 2015 Christoph Breitkopf'>
+<meta name='description' content='ICFP Contest 2015'>
+<link href='style.css' type='text/css' rel='stylesheet'>
+
+
+</head>
+<body>
+<div id="header">
+<h1>ICFP Contest 2015</h1>
+
+<p>
+   <label for="problem">Problem</label>
+ <input type="file" name="problem" id="problem" accept=".json" />
+
+<br>
+   <label for="sol">Solution</label>
+  <input type="file" name="sol" id="sol" accept=".json" />
+  <input type="button" id="btn_simulate" value="Simulate" />
+</p>
+
+</div>
+
+<div id="left">
+
+<p>Units: <span id="lbl_units">?</span></p>
+
+<p>
+  Unit: 
+  <input id="unit_num" type="number" min="0" value="0" />
+</p>
+
+<p>
+  <input type="button" id="btn_W" value="W" />
+  <input type="button" id="btn_E" value="E" />
+  <br>
+  <input type="button" id="btn_SW" value="SW" />
+  <input type="button" id="btn_SE" value="SE" />
+<br>
+  <input type="button" id="btn_CW" value="CW" />
+  <input type="button" id="btn_CCW" value="CCW" />
+  <br>
+  <input type="button" id="btn_move" value="Move" />
+  <input type="button" id="btn_run" value="Run" />
+</p>
+
+
+
+  
+</div>
+
+<div id="main">
+
+<canvas id="map" >
+</canvas>
+
+<p id="msg">
+  </p>
+  <p id="solution"> </p>
+
+</div>
+
+</body>
+</html>
