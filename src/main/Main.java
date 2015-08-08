@@ -20,11 +20,6 @@ import java.util.List;
 public class Main {
 
     public static void main(String[] args) throws IOException {
-//    	System.out.println(Command.translate("ei!"));
-//    	System.out.println(Command.translate("cthulhu"));
-//    	System.out.println(Command.translate("ia! ia!"));
-//    	System.out.println(Command.translate("r'lyeh"));
-//    	System.out.println(Command.translate("yuggoth"));
         Arguments arguments = processArgs(args);
         List<Solution> solutions = new ArrayList<>();
         for (String fileString : arguments.getFiles()) {
@@ -50,7 +45,7 @@ public class Main {
             JSONObject output = new JSONObject();
             output.put("problemId", solution.id);
             output.put("seed", solution.seed);
-            output.put("tag", "power to the words");
+            output.put("tag", "ia! added");
             output.put("solution", solution.commandString);
             combined.put(output);
             points += solution.points;
