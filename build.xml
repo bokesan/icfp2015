@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<project name="icfp2015" default="compile">
+  <description>ICFP2015</description>
+
+  <property environment="env" />
+  <property name="build.dir" location="bin" />
+  <property name="classes.dir" location="${build.dir}" />
+  <property name="build.debug" value="true" />
+
+  <property name="test.dir" location="${build.dir}/test" />
+  <property name="test.data.dir" location="${test.dir}/data" />
+  <property name="test.reports.dir" location="${test.dir}/reports" />
+
+  <path id="compile.classpath">
+    <pathelement location="${classes.dir}" />
+    <pathelement location="lib/json-20141113.jar" />
+  </path>
+
+  <target name="init">
+    <mkdir dir="${classes.dir}" />
+    <mkdir dir="dist" />
+    <mkdir dir="doc" />
+    <mkdir dir="tmp" />
+  </target>
+
+  <target name="compile" depends="init" description="Compile">
+    <javac srcdir="src"
+           destdir="${classes.dir}"
+	   source="7"
+	   target="7"
+	   encoding="utf-8"
+	   debug="${build.debug}">
+      <classpath refid="compile.classpath" />
+      <compilerarg value="-Xlint:all" />
+    </javac>
+  </target>
+
+  <target name="jar" depends="compile, manifest" description="Make jar">
+    <jar destfile="dist/${ant.project.name}.jar"
+         manifest="tmp/MANIFEST.MF">
+      <fileset dir="${classes.dir}" />
+    </jar>
+  </target>
+
+  <target name="manifest" depends="init" description="Create manifest for jar">
+    <manifest file="tmp/MANIFEST.MF">
+      <attribute name="Built-By" value="${user.name}" />
+      <attribute name="Built-On" value="${timestamp.isoformat}" />
+      <attribute name="Main-Class" value="main.Main" />
+      <!-- <attribute name="Class-Path" value="log4j-1.2.12.jar" /> -->
+    </manifest>
+  </target>
+
+  <target name="clean" description="Delete temporary build files">
+    <delete dir="${build.dir}" />
+    <delete dir="dist" />
+    <delete dir="doc" />
+    <delete dir="tmp" />
+  </target>
+
+</project>
