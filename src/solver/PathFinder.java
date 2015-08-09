@@ -15,11 +15,10 @@ public class PathFinder {
 
     public enum Mode {
     	//todo refactor cap and depth into enum member variables
-    	CHRIS_PATH, POWER_NO_WORDS, POWER_NO_WORDS_1, POWER_NO_WORDS_2, POWER_NO_WORDS_3,
-    	FILL_ROWS_1, FILL_ROWS_2, FILL_ROWS_3, FILL_ROWS_4, FILL_ROWS_5,
-    	WITH_ALL_POWER, WITH_ALL_POWER_1, WITH_ALL_POWER_2, WITH_ALL_POWER_3, WITH_ALL_POWER_4, WITH_ALL_POWER_5,
+    	POWER_NO_WORDS, WA2_WAP_CAP_8, WA3_WAP_CAP_8, WA2_WAP2_CAP_8, WA3_WAP2_CAP_8,
+    	WITH_ALL_POWER, WITH_ALL_POWER_1, WITH_ALL_POWER_2, WITH_ALL_POWER_3, WITH_ALL_POWER_4, WITH_ALL_POWER_5, WITH_ALL_POWER_6,
     	WA1_WITH_ALL_POWER, WA1_WITH_ALL_POWER_1, WA1_WITH_ALL_POWER_2, WA1_WITH_ALL_POWER_3, WA1_WITH_ALL_POWER_4, WA1_WITH_ALL_POWER_5,
-    	EACH_WORD_ONCE, EACH_WORD_ONCE_1, EACH_WORD_ONCE_2, EACH_WORD_ONCE_3, EACH_WORD_ONCE_4, EACH_WORD_ONCE_5,
+    	EACH_WORD_ONCE, EACH_WORD_ONCE_1, EACH_WORD_ONCE_2, EACH_WORD_ONCE_3, EACH_WORD_ONCE_4, EACH_WORD_ONCE_5,  EACH_WORD_ONCE_6,
     	WAP_CAP_6, WAP_CAP_7, WAP_CAP_8,
     	WAP_1_CAP_6, WAP_1_CAP_7, WAP_1_CAP_8,
     	WAP_2_CAP_6, WAP_2_CAP_7, WAP_2_CAP_8,
@@ -34,7 +33,12 @@ public class PathFinder {
     	EWO_1_CAP_6, EWO_1_CAP_7, EWO_1_CAP_8,
     	EWO_2_CAP_6, EWO_2_CAP_7, EWO_2_CAP_8,
     	EWO_3_CAP_6, EWO_3_CAP_7, EWO_3_CAP_8,
-        EWO_4_CAP_6, EWO_4_CAP_7, EWO_4_CAP_8;
+        EWO_4_CAP_6, EWO_4_CAP_7, EWO_4_CAP_8,
+        WA1_EWO_CAP_6, WA1_EWO_CAP_7, WA1_EWO_CAP_8,
+        WA1_EWO_1_CAP_6, WA1_EWO_1_CAP_7, WA1_EWO_1_CAP_8,
+        WA1_EWO_2_CAP_6, WA1_EWO_2_CAP_7, WA1_EWO_2_CAP_8,
+        WA1_EWO_3_CAP_6, WA1_EWO_3_CAP_7, WA1_EWO_3_CAP_8,
+        WA1_EWO_4_CAP_6, WA1_EWO_4_CAP_7, WA1_EWO_4_CAP_8;
     	
     	public String toString() { return name(); }
     }
@@ -57,22 +61,14 @@ public class PathFinder {
     //todo refactor cap and depth into variable in enum
     public PathResult findPath(Mode mode) {
         switch (mode) {
-            case CHRIS_PATH: 		return chrisPath();
             case POWER_NO_WORDS:	return withPower(0, 0, 0);
-            case POWER_NO_WORDS_1:	return withPower(1, 0, 0);
-            case POWER_NO_WORDS_2:	return withPower(2, 0, 0);
-            case POWER_NO_WORDS_3:	return withPower(3, 0, 0);
-            case FILL_ROWS_1: 		return fillRows(1);
-            case FILL_ROWS_2: 		return fillRows(2);
-            case FILL_ROWS_3: 		return fillRows(3);
-            case FILL_ROWS_4: 		return fillRows(4);
-            case FILL_ROWS_5: 		return fillRows(5);
             case WITH_ALL_POWER: 	return withPower(0, -1, 0);
             case WITH_ALL_POWER_1: 	return withPower(1, -1, 0);
             case WITH_ALL_POWER_2: 	return withPower(2, -1, 0);
             case WITH_ALL_POWER_3: 	return withPower(3, -1, 0);
             case WITH_ALL_POWER_4: 	return withPower(4, -1, 0);
             case WITH_ALL_POWER_5:  return withPower(5, -1, 0);
+            case WITH_ALL_POWER_6:  return withPower(6, -1, 0);
             case WA1_WITH_ALL_POWER:    return withPower(0, -1, 1);
             case WA1_WITH_ALL_POWER_1:  return withPower(1, -1, 1);
             case WA1_WITH_ALL_POWER_2:  return withPower(2, -1, 1);
@@ -85,6 +81,7 @@ public class PathFinder {
             case EACH_WORD_ONCE_3:	return eachWordOnce(3, -1, 0);
             case EACH_WORD_ONCE_4:	return eachWordOnce(4, -1, 0);
             case EACH_WORD_ONCE_5:  return eachWordOnce(5, -1, 0);
+            case EACH_WORD_ONCE_6:  return eachWordOnce(5, -1, 6);
             case EWO_CAP_6:			return eachWordOnce(0, 6, 0);
             case EWO_CAP_7:			return eachWordOnce(0, 7, 0);
             case EWO_CAP_8:			return eachWordOnce(0, 8, 0);
@@ -100,15 +97,34 @@ public class PathFinder {
             case EWO_4_CAP_6: return eachWordOnce(4, 6, 0);
             case EWO_4_CAP_7: return eachWordOnce(4, 7, 0);
             case EWO_4_CAP_8: return eachWordOnce(4, 8, 0);
+            case WA1_EWO_CAP_6:         return eachWordOnce(0, 6, 1);
+            case WA1_EWO_CAP_7:         return eachWordOnce(0, 7, 1);
+            case WA1_EWO_CAP_8:         return eachWordOnce(0, 8, 1);
+            case WA1_EWO_1_CAP_6: return eachWordOnce(1, 6, 1);
+            case WA1_EWO_1_CAP_7: return eachWordOnce(1, 7, 1);
+            case WA1_EWO_1_CAP_8: return eachWordOnce(1, 8, 1);
+            case WA1_EWO_2_CAP_6: return eachWordOnce(2, 6, 1);
+            case WA1_EWO_2_CAP_7: return eachWordOnce(2, 7, 1);
+            case WA1_EWO_2_CAP_8: return eachWordOnce(2, 8, 1);
+            case WA1_EWO_3_CAP_6: return eachWordOnce(3, 6, 1);
+            case WA1_EWO_3_CAP_7: return eachWordOnce(3, 7, 1);
+            case WA1_EWO_3_CAP_8: return eachWordOnce(3, 8, 1);
+            case WA1_EWO_4_CAP_6: return eachWordOnce(4, 6, 1);
+            case WA1_EWO_4_CAP_7: return eachWordOnce(4, 7, 1);
+            case WA1_EWO_4_CAP_8: return eachWordOnce(4, 8, 1);
             case WAP_CAP_6:			return withPower(0, 6, 0);
             case WAP_CAP_7:			return withPower(0, 7, 0);
             case WAP_CAP_8:			return withPower(0, 8, 0);
+            case WA2_WAP_CAP_8:         return withPower(0, 8, 2);
+            case WA3_WAP_CAP_8:         return withPower(0, 8, 3);
             case WAP_1_CAP_6: return withPower(1, 6, 0);
             case WAP_1_CAP_7: return withPower(1, 7, 0);
             case WAP_1_CAP_8: return withPower(1, 8, 0);
             case WAP_2_CAP_6: return withPower(2, 6, 0);
             case WAP_2_CAP_7: return withPower(2, 7, 0);
             case WAP_2_CAP_8: return withPower(2, 8, 0);
+            case WA2_WAP2_CAP_8: return withPower(2, 8, 2);
+            case WA3_WAP2_CAP_8: return withPower(2, 8, 3);
             case WAP_3_CAP_6: return withPower(3, 6, 0);
             case WAP_3_CAP_7: return withPower(3, 7, 0);
             case WAP_3_CAP_8: return withPower(3, 8, 0);
