@@ -1,11 +1,8 @@
 package solver;
 
-import commands.Command;
 import commands.CommandPathOptions;
-import commands.CommandSequence;
 import main.Boardstate;
 import main.Solution;
-import solver.TaskSolver.TaskSolution;
 import units.SourceStream;
 
 import java.util.ArrayList;

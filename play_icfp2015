@@ -22,4 +22,4 @@ do
   THE_CLASSPATH=${THE_CLASSPATH}:${i}
 done
 
-java -Xmx${megabytes}m -cp ${THE_CLASSPATH} main/Main "$@"
+java -ea -Xmx${megabytes}m -cp ${THE_CLASSPATH} main/Main "$@"

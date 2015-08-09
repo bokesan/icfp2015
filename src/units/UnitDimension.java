@@ -2,8 +2,16 @@ package units;
 
 public class UnitDimension {
 
-    public int minY = Integer.MAX_VALUE;
-    public int maxY = Integer.MIN_VALUE;
-    public int minX = Integer.MAX_VALUE;
-    public int maxX = Integer.MIN_VALUE;
+    public final int minY;
+    public final int maxY;
+    public final int minX;
+    public final int maxX;
+    
+    public UnitDimension(int minX, int maxX, int minY, int maxY) {
+        this.minX = minX;
+        this.maxX = maxX;
+        this.minY = minY;
+        this.maxY = maxY;
+    }
+    
 }

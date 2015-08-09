@@ -1,7 +1,5 @@
 package main;
 
-import commands.CommandSequence;
-
 public class Solution {
     public String commandString;
     public int points;

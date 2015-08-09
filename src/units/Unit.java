@@ -6,13 +6,15 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Unit {
 
     private final List<Coordinate> members;
     private final Coordinate pivot;
-    private final UnitDimension dimension = new UnitDimension();
+    private final UnitDimension dimension;
 
     @Override
     public boolean equals(Object object) {
@@ -50,23 +52,28 @@ public class Unit {
             JSONObject member = memberJson.getJSONObject(i);
             this.members.add(new Coordinate(member.getInt("x"), member.getInt("y")));
         }
-        setDimension();
+        this.dimension = setDimension();
     }
 
     public Unit(Coordinate pivot, List<Coordinate> newMembers) {
         this.members = newMembers;
         this.pivot = pivot;
-        setDimension();
+        this.dimension = setDimension();
     }
 
-    private void setDimension() {
+    private UnitDimension setDimension() {
         Collections.sort(members);
+        int minX = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        int minY = Integer.MAX_VALUE;
+        int maxY = Integer.MIN_VALUE;
         for (Coordinate member : members) {
-            if (member.x < dimension.minX) dimension.minX = member.x;
-            if (member.x > dimension.maxX) dimension.maxX = member.x;
-            if (member.y < dimension.minY) dimension.minY = member.y;
-            if (member.y > dimension.maxY) dimension.maxY = member.y;
+            if (member.x < minX) minX = member.x;
+            if (member.x > maxX) maxX = member.x;
+            if (member.y < minY) minY = member.y;
+            if (member.y > maxY) maxY = member.y;
         }
+        return new UnitDimension(minX, maxX, minY, maxY);
     }
 
     public static List<Unit> fromJson(JSONArray jsonUnits) {
@@ -152,7 +159,15 @@ public class Unit {
         }
     }
 
+    
+    private final Map<Integer, Unit> rotations = new HashMap<>();
+    
     public Unit getRotatedUnit(int rotations) {
+        Unit u = this.rotations.get(rotations);
+        if (u != null) {
+            return u;
+        }
+        
         List<Coordinate> newMembers = new ArrayList<>(members.size());
         for (Coordinate member : members) {
             Coordinate newCoordinate = member;
@@ -161,7 +176,9 @@ public class Unit {
             }
             newMembers.add(newCoordinate);
         }
-        return new Unit(pivot, newMembers);
+        u = new Unit(pivot, newMembers);
+        this.rotations.put(rotations, u);
+        return u;
     }
 
     Coordinate cubeToOffset(Cube cube) {

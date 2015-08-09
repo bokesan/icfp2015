@@ -2,7 +2,7 @@
 module Board (
        Move(..),
        Cell(..),
-       Unit(..),
+       Unit(..), ppUnit,
        Problem(..), cells,
        Solution(..),
        move, validPos, dimensions, translate, below, distance,
@@ -198,3 +198,12 @@ cells :: Problem -> [Cell]
 cells problem = [ Cell x y | x <- [0..lastCol], y <- [0..lastRow] ]
   where lastCol = pWidth problem - 1
         lastRow = pHeight problem - 1
+
+ppUnit :: Unit -> String
+ppUnit u@(Unit _ ms) =
+  let (minX, maxX, minY, maxY) = dimensions u
+      row y = concat [cell x y | x <- [minX..maxX]]
+      cell x y | Cell x y `elem` ms = "#"
+               | otherwise = " "
+  in
+     concat [row n ++ "\n" | n <- [minY..maxY]]
