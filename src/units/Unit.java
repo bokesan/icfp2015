@@ -6,13 +6,15 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Unit {
 
     private final List<Coordinate> members;
     private final Coordinate pivot;
-    private UnitDimension dimension;
+    private final UnitDimension dimension;
 
     @Override
     public boolean equals(Object object) {
@@ -25,6 +27,11 @@ public class Unit {
             return true;
         }
         return false;
+    }
+    
+    @Override
+    public int hashCode() {
+        return 59 * pivot.hashCode() + members.hashCode();
     }
     
     public String toString() {
@@ -45,24 +52,28 @@ public class Unit {
             JSONObject member = memberJson.getJSONObject(i);
             this.members.add(new Coordinate(member.getInt("x"), member.getInt("y")));
         }
-        setDimension();
+        this.dimension = setDimension();
     }
 
     public Unit(Coordinate pivot, List<Coordinate> newMembers) {
         this.members = newMembers;
         this.pivot = pivot;
-        setDimension();
+        this.dimension = setDimension();
     }
 
-    private void setDimension() {
-        dimension = new UnitDimension();
+    private UnitDimension setDimension() {
         Collections.sort(members);
+        int minX = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        int minY = Integer.MAX_VALUE;
+        int maxY = Integer.MIN_VALUE;
         for (Coordinate member : members) {
-            if (member.x < dimension.minX) dimension.minX = member.x;
-            if (member.x > dimension.maxX) dimension.maxX = member.x;
-            if (member.y < dimension.minY) dimension.minY = member.y;
-            if (member.y > dimension.maxY) dimension.maxY = member.y;
+            if (member.x < minX) minX = member.x;
+            if (member.x > maxX) maxX = member.x;
+            if (member.y < minY) minY = member.y;
+            if (member.y > maxY) maxY = member.y;
         }
+        return new UnitDimension(minX, maxX, minY, maxY);
     }
 
     public static List<Unit> fromJson(JSONArray jsonUnits) {
@@ -94,15 +105,15 @@ public class Unit {
     public List<Coordinate> getAbsoluteMembers(Coordinate pivotPoint) {
         int yOffset = pivotPoint.y - pivot.y;
         int xOffset = pivotPoint.x - pivot.x;
-        List<Coordinate> newCoordinates = new ArrayList<>();
+        List<Coordinate> newCoordinates = new ArrayList<>(members.size());
         for (Coordinate old : members) {
-            if (pivotPoint.y % 2 == pivot.y % 2) {
+            if ((pivotPoint.y & 1) == (pivot.y & 1)) {
                 //moving from odd to odd row or from even to even row
                 newCoordinates.add(new Coordinate(old.x + xOffset, old.y + yOffset));
-            } else if (pivotPoint.y % 2 == 0) {
+            } else if ((pivotPoint.y & 1) == 0) {
                 //moving from odd to even row
                 //subtract 1 from x offset in formerly even rows
-                if (old.y % 2 == 0) {
+                if ((old.y & 1) == 0) {
                     newCoordinates.add(new Coordinate(old.x + xOffset - 1, old.y + yOffset));
                 } else {
                     newCoordinates.add(new Coordinate(old.x + xOffset, old.y + yOffset));
@@ -110,7 +121,7 @@ public class Unit {
             } else {
                 //moving from even to odd row
                 //add one to x offset in formerly odd rows
-                if (old.y % 2 == 0) {
+                if ((old.y & 1) == 0) {
                     newCoordinates.add(new Coordinate(old.x + xOffset, old.y + yOffset));
                 } else {
                     newCoordinates.add(new Coordinate(old.x + xOffset + 1, old.y + yOffset));
@@ -148,8 +159,16 @@ public class Unit {
         }
     }
 
+    
+    private final Map<Integer, Unit> rotations = new HashMap<>();
+    
     public Unit getRotatedUnit(int rotations) {
-        List<Coordinate> newMembers = new ArrayList<>();
+        Unit u = this.rotations.get(rotations);
+        if (u != null) {
+            return u;
+        }
+        
+        List<Coordinate> newMembers = new ArrayList<>(members.size());
         for (Coordinate member : members) {
             Coordinate newCoordinate = member;
             for (int i = 0; i < rotations; i++) {
@@ -157,7 +176,9 @@ public class Unit {
             }
             newMembers.add(newCoordinate);
         }
-        return  new Unit(pivot, newMembers);
+        u = new Unit(pivot, newMembers);
+        this.rotations.put(rotations, u);
+        return u;
     }
 
     Coordinate cubeToOffset(Cube cube) {
@@ -176,18 +197,37 @@ public class Unit {
     Coordinate computeRot(Coordinate center, Coordinate point) {
         Cube cc = offsetToCube(center);
         Cube cp = offsetToCube(point);
-        Cube d = new Cube(cp.x - cc.x, cp.y - cc.y, cp.z - cc.z);
-        Cube r = new Cube(-d.z, -d.x, -d.y);
-        Cube p = new Cube(cc.x + r.x, cc.y + r.y, cc.z + r.z);
-        return cubeToOffset(p);
+        cp.subtract(cc);
+        cp.rot();
+        cp.add(cc);
+        return cubeToOffset(cp);
     }
 
     private class Cube {
-        public int x;
-        public int y;
-        public int z;
+        private int x;
+        private int y;
+        private int z;
+        
         public Cube(int x, int y, int z) {
             this.x =x; this.y = y; this.z = z;
         }
+        
+        public void add(Cube c) {
+            x += c.x;
+            y += c.y;
+            z += c.z;
+        }
+        public void subtract(Cube c) {
+            x -= c.x;
+            y -= c.y;
+            z -= c.z;
+        }
+        public void rot() {
+            int tx = -z;
+            int ty = -x;
+            int tz = -y;
+            x = tx; y = ty; z = tz;
+        }
+        
     }
 }

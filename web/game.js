@@ -20,6 +20,13 @@ const ROT_CCW = 7;
 const LOCK    = 8;
 const STOP    = 9;
 
+// quality
+const Q_DEPTH_FACTOR = 100;
+const Q_COVERED = 30;
+const Q_PART_COVERED = 10;
+const Q_INVALID = 1000000; // Number.MAX_VALUE;
+
+
 var size = 42;
 
 var problem = {};
@@ -69,18 +76,25 @@ function nextRandom() {
 
 // =====
 
-function isFilled(col,row) {
-    var i;
-    var cell;
+function isOnBoard(c) {
+    return (c.x >= 0 && c.x < problem.width &&
+            c.y >= 0 && c.y < problem.height);
+}
+
+
+function isFilled(c) {
     var f = problem.filled;
     var n = f.length;
-    for (i = 0; i < n; i++) {
-        cell = f[i];
-        if (cell.x === col && cell.y === row) {
+    for (var i = 0; i < n; i++) {
+        if (cellEquals(f[i], c)) {
             return true;
         }
     }
     return false;
+}
+
+function isFilledOrOff(c) {
+    return isFilled(c) || !isOnBoard(c);
 }
 
 function cellEquals(a, b) {
@@ -130,10 +144,7 @@ function isValidLocation(unit) {
     var i;
     var n = unit.members.length;
     for (i = 0; i < n; i++) {
-        var c = unit.members[i];
-        if (c.x < 0 || c.y < 0 || c.x >= problem.width || c.y >= problem.height
-            || isFilled(c.x, c.y))
-        {
+        if (isFilledOrOff(unit.members[i])) {
             return false;
         }
     }
@@ -147,36 +158,87 @@ function isValidLocation(unit) {
     return true;
 }
 
+
 function atBottom(unit) {
     var dim = unitDimensions(unit);
     return dim.max_y >= (problem.height - 1);
 }
 
 function rowFull(row) {
-    var col;
-    for (col = 0; col < problem.width; col++) {
-        if (!isFilled(col,row)) {
-            return false;
+    var numCells = 0;
+    problem.filled.forEach(function (c) {
+        if (c.y === row) {
+            numCells++;
         }
-    }
-    return true;
+    });
+    return numCells === problem.width;
 }
 
 function clearRow(row) {
     var n = [];
-    var i;
-    for (i = 0; i < problem.filled.length; i++) {
-        if (problem.filled[i].y !== row) {
-            n.push(problem.filled[i]);
+    problem.filled.forEach(function (cell) {
+        if (cell.y > row) {
+            n.push(cell);
+        }
+        else if (cell.y < row) {
+            n.push({x: cell.x, y: cell.y + 1});
+        }
+        // and don't push if === row
+    });
+    problem.filled = n;
+}
+
+function topmost_row_used() {
+    var top = problem.height;
+    problem.filled.forEach(function (cell) { top = Math.min(top, cell.y); });
+    return top;
+}
+
+function cover_badness(c) {
+    var nw = isFilledOrOff(moveCell(c, DIR_NW));
+    var ne = isFilledOrOff(moveCell(c, DIR_NE));
+    if (nw) {
+        return ne ? Q_COVERED : Q_PART_COVERED;
+    } else {
+        return ne ? Q_PART_COVERED : 0;
+    }
+}
+
+// empty board is good, filled at top is worse than at bottom
+// and borders are slightly better than middle
+function fill_badness() {
+    var q = 0;
+    var rf = Q_DEPTH_FACTOR * Q_DEPTH_FACTOR / (problem.width * problem.height);
+    var cf = rf / 50;
+    var w2 = (problem.width - 1) / 2;
+    problem.filled.forEach(function (c) {
+        q += rf * (problem.height - c.y);
+        q += cf * (w2 - Math.abs(c.x - w2));
+    });
+    return q;
+}
+
+
+// evaluate quality of current board position
+// lower is better
+function quality() {
+    var row, col, cell;
+    var q = 0;
+    q += fill_badness();
+    // holes are bad
+    /*
+    for (row = 1; row < problem.height; row++) {
+        for (col = 0; col < problem.width; col++) {
+            cell = {x: col, y: row};
+            if (!isFilled(cell)) {
+                q += cover_badness(cell);
+            }
         }
     }
-    problem.filled = n.map(function(cell) {
-        if (cell.y < row) {
-            return { x: cell.x, y: cell.y + 1 };
-        }
-        return cell;
-    });
+    */
+    return q;
 }
+
 
 
 // unit dimensions
@@ -193,14 +255,6 @@ function unitDimensions(unit) {
     });
     return { min_x: min_x, max_x: max_x,
              min_y: min_y, max_y: max_y };
-}
-
-function unitRowWeight(unit) {
-    var sum = 0;
-    unit.members.forEach(function (cell) {
-        sum += cell.y;
-    });
-    return sum;
 }
 
 
@@ -263,14 +317,14 @@ function loadSolution(f) {
 }
 
 
-function showCoord(col, row) {
-    return col.toString() + ',' + row;
+function showCoord(cell) {
+    return cell.x.toString() + ',' + cell.y;
 }
 
 function parseCoord(s) {
-  var col = s.charCodeAt(0) - 64;
-  var row = parseInt(s.substring(1));
-  return [col, row];
+    var col = s.charCodeAt(0) - 64;
+    var row = parseInt(s.substring(1));
+    return {x:col, y:row};
 }
 
 
@@ -304,15 +358,14 @@ function drawPivot(ctx) {
   ctx.restore();
 }
 
-function baseCoord(col,row) {
-  var xoff = size * Math.sqrt(3) / 2;
-  var yoff = 0.75 * size;
-  var x = -5;
-  // row = mapHeight - row;
-  if (row & 1) {
-    x += xoff / 2;
-  }
-  return [x + col * xoff, row * yoff];
+function baseCoord(c) {
+    var xoff = size * Math.sqrt(3) / 2;
+    var yoff = 0.75 * size;
+    var x = -5;
+    if (c.y & 1) {
+        x += xoff / 2;
+    }
+    return {x: x + c.x * xoff, y: c.y * yoff};
 }
 
 function mapToCell(x, y) {
@@ -337,7 +390,7 @@ function drawMap() {
     m.height = yoff * (height + 0.333);
     var c = m.getContext('2d');
     var row, col, w;
-    var xy;
+    var xy, cell;
 
     c.fillStyle = MAP_BACKGROUND_COLOR;
     c.fillRect(0, 0, m.width, m.height);
@@ -346,21 +399,23 @@ function drawMap() {
     c.save();
     for (row = 0; row < height; row++) {
         for (col = 0; col < width; col++) {
-            if (isFilled(col,row)) {
+            cell = {x:col,y:row};
+            if (isFilled(cell)) {
                 c.fillStyle = FILLED_COLOR;
             } else {
                 c.fillStyle = MAP_COLOR;
             }
-            xy = baseCoord(col,row);
+            xy = baseCoord(cell);
             c.save();
-            c.translate(xy[0],xy[1]);
+            c.translate(xy.x,xy.y);
             drawHex(c);
-            c.strokeText(showCoord(col, row), xoff * 0.5, size / 2);
+            if (size >= 40) {
+                c.strokeText(showCoord(cell), xoff * 0.5, size / 2);
+            }
             c.restore();
         }
     }
     c.restore();
-    // $("#msg").text("-");
 }
 
 function drawUnit() {
@@ -373,21 +428,20 @@ function drawUnit() {
     c.strokeStyle = 'black';
     c.save();
     unit.members.forEach(function (cell) {
-        var xy = baseCoord(cell.x, cell.y);
+        var xy = baseCoord(cell);
         c.save();
-        if (isFilled(cell.x,cell.y)) {
+        if (isFilled(cell)) {
             c.fillStyle = UNIT_OVERLAP_COLOR;
         }
-        c.translate(xy[0], xy[1]);
+        c.translate(xy.x, xy.y);
         drawHex(c);
         c.restore();
     });
-    var px = unit.pivot.x;
-    var py = unit.pivot.y;
-    if (px >= 0 && px < problem.width && py >= 0 && py < problem.height) {
-        var xy = baseCoord(px, py);
+
+    if (isOnBoard(unit.pivot)) {
+        var xy = baseCoord(unit.pivot);
         c.save();
-        c.translate(xy[0], xy[1]);
+        c.translate(xy.x, xy.y);
         drawPivot(c);
         c.restore();
     }
@@ -400,8 +454,8 @@ function spawnUnit(index) {
     var width = 1 + dim.max_x - dim.min_x;
     var space = problem.width - width;
     var xoffs = Math.floor(space / 2) - dim.min_x;
-    // alert('width: ' + width + ', offs ' + xoffs + ',' + yoffs);
     unit = translateUnit(unit, xoffs, yoffs);
+    lastQuality = Q_INVALID;
 }
 
 
@@ -510,6 +564,19 @@ function nextUnit() {
 
 var solution = [];
 
+var WORDS = [["ei!", "243"],
+             ["ia! ia!", "4435443"],
+             ["r'lyeh", "135224"],
+             ["yuggoth", "2k445k4"]
+            ]; 
+
+function chant(s, words) {
+    words.forEach(function (w) {
+        s = s.replace(new RegExp(w[1], 'g'), w[0]);
+    });
+    return s;
+}
+
 function encodeSolution(s) {
     var r = '';
     s.forEach(function (move) {
@@ -527,7 +594,7 @@ function encodeSolution(s) {
             r += c;
         }
     });
-    return r;
+    return chant(r, WORDS);
 }
 
 function executeMove(move, newUnit) {
@@ -601,7 +668,7 @@ function tryMoveX(move, lockIfInvalid) {
 }
 
 
-function computeMove() {
+function computeMove_simple() {
     if (!isValidLocation(unit)) {
         tryMove(STOP);
     }
@@ -612,11 +679,94 @@ function computeMove() {
         tryMove(DIR_SW) || tryMove(DIR_SE) || tryMove(DIR_W) || tryMove(DIR_E)
           || tryMove(ROT_CW) || tryMove(ROT_CCW)
           || tryMove(LOCK);
-        // drawMap();
-        // drawUnit();
-        // $('#solution').text(encodeSolution(solution));
-        // $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned);
     }
+}
+
+function myClone(obj) {
+    return JSON.parse(JSON.stringify(obj));
+}
+
+
+function evalMove(move) {
+    var oldProblem = myClone(problem);
+    var oldUnit = myClone(unit);
+    var oldPos = myClone(prevPositions);
+    var oldSol = myClone(solution);
+    var oldNumSpawned = numSpawned;
+    var oldScore = score;
+    var oldSeed = seed;
+    var oldLs = ls_old;
+
+    var q;
+    if (tryMove(move)) {
+        if (move !== LOCK) {
+            lockUnit();
+        }
+        q = quality();
+    } else {
+        q = Q_INVALID;
+    }
+    problem = oldProblem;
+    unit = oldUnit;
+    prevPositions = oldPos;
+    solution = oldSol;
+    numSpawned = oldNumSpawned;
+    score = oldScore;
+    seed = oldSeed;
+    ls_old = oldLs;
+    return q;
+}
+
+
+var lastQuality = Q_INVALID;
+
+function computeMove_opt() {
+    if (!isValidLocation(unit)) {
+        tryMove(STOP);
+        return;
+    }
+    
+    var mvs = [];
+    mvs[DIR_E]    = evalMove(DIR_E);
+    mvs[DIR_W]    = evalMove(DIR_W);
+    mvs[DIR_SE]   = evalMove(DIR_SE);
+    mvs[DIR_SW]   = evalMove(DIR_SW);
+    mvs[ROT_CW]   = evalMove(ROT_CW);
+    mvs[ROT_CCW]  = evalMove(ROT_CCW);
+    mvs[DIR_NW]   = Q_INVALID;
+    mvs[DIR_NE]   = Q_INVALID;
+    
+    var best = DIR_SW;
+    var bestVal = mvs[DIR_SW];
+    for (var i = 0; i < LOCK; i++) {
+        if (mvs[i] < bestVal) {
+            bestVal = mvs[i];
+            best = i;
+        }
+        mvs[i] = mvs[i] | 0; // readability in debug
+    }
+    // alert('Moves: ' + mvs + ', best ' + best + (lastQuality < bestVal ? ', WORSE ' : ', better ') + bestVal + ' <= ' + lastQuality);
+    if (lastQuality < bestVal) {
+        tryMoveX(DIR_SW, true);
+    } else {
+        tryMoveX(best, true);
+        lastQuality = bestVal;
+    }
+}
+
+function computeMove() {
+    computeMove_simple();
+}
+
+
+function redraw() {
+    drawMap();
+    if (unit) {
+        drawUnit();
+    }
+    $('#solution').text(encodeSolution(solution));
+    $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned
+                   + ', Quality: ' + quality());
 }
 
 function humanMove(move) {
@@ -625,10 +775,7 @@ function humanMove(move) {
     }
     else {
         tryUserMove(move);
-        drawMap();
-        drawUnit();
-        $('#solution').text(encodeSolution(solution));
-        $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned);
+        redraw();
     }
 }
 
@@ -694,17 +841,13 @@ $(document).ready(function(){
 
     $('#btn_move').click(function () {
         computeMove();
+        redraw();
     });
     $('#btn_run').click(function () {
-        while (unit != null && numSpawned <= problem.sourceLength) {
+        while (unit && numSpawned <= problem.sourceLength) {
             computeMove();
         }
-        drawMap();
-        if (numSpawned <= problem.sourceLength && unit != null) {
-            drawUnit();
-        }
-        $('#solution').text(encodeSolution(solution));
-        $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned);
+        redraw();
     });
 
     $('#sol').live('change', function (e) {
@@ -712,10 +855,7 @@ $(document).ready(function(){
     });
     $('#btn_simulate').click(function () {
         runSolution();
-        drawMap();
-        drawUnit();
-        $('#solution').text(encodeSolution(solution));
-        $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned);
+        redraw();
     });
     
     sound_move = new Audio('move.wav');

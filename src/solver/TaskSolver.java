@@ -10,7 +10,6 @@ import java.util.List;
 
 import commands.CommandPathOptions;
 
-
 public class TaskSolver {
 
 	private Boardstate board;

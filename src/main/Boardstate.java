@@ -1,74 +1,77 @@
 package main;
 
 import commands.Command;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
+
 import solver.VisitedState;
 import units.Coordinate;
 import units.Unit;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 
 public class Boardstate {
 
-    private int width;
-    private int height;
-    private boolean[][] filled;
-    private int linesClearedOld = 0;
-    private JSONObject sourceJson;
+    private final int width;
+    private final int height;
 
-//    public Boardstate(int width, int height, boolean[][] filled) {
-//        this.width = width;
-//        this.height = height;
-//        this.filled = filled;
-//        checkDimensions();
-//    }
-
-    private void checkDimensions() {
-        assert filled.length == width;
-        assert filled[0].length == height;
+    // filled cells, row-wise
+    private final boolean[] filled;
+    
+    private int cellIndex(int x, int y) {
+        return y * width + x;
     }
+    
+    private int cellIndex(Coordinate c) {
+        return cellIndex(c.x, c.y);
+    }
+    
+    private int linesClearedOld = 0;
+    private final JSONObject sourceJson;
 
     public Boardstate(JSONObject json) {
         this.height = json.getInt("height");
         this.width = json.getInt("width");
         this.filled = convertFilled(json.getJSONArray("filled"));
         this.sourceJson = json;
-        checkDimensions();
     }
     
     public Boardstate getInitialStateClone() {
     	return new Boardstate(sourceJson);
     }
 
-    private boolean[][] convertFilled(JSONArray filledJson) {
-        boolean[][] filled = new boolean[width][height];
-        for (int i = 0; i < filledJson.length(); i++) {
+    private boolean[] convertFilled(JSONArray filledJson) {
+        boolean[] filled = new boolean[width*height];
+        int n = filledJson.length();
+        for (int i = 0; i < n; i++) {
             JSONObject point = filledJson.getJSONObject(i);
             int x = point.getInt("x");
             int y = point.getInt("y");
-            filled[x][y] = true;
+            filled[cellIndex(x,y)] = true;
         }
         return filled;
     }
 
     public boolean isFilled(int x, int y) {
-        return filled[x][y];
+        return filled[cellIndex(x,y)];
     }
 
     private boolean isFilled(Coordinate coordinate) {
         return isFilled(coordinate.x, coordinate.y);
     }
+    
 
     public String toString() {
         StringBuilder output = new StringBuilder();
-        for (int y = 0; y < filled[0].length; y++) {
+        for (int y = 0; y < height; y++) {
             //check whether its an odd or even row for indentation
             if (y % 2 == 1) output.append(" ");
-            for (int x = 0; x < filled.length; x++) {
-                if (filled[x][y]) {
+            for (int x = 0; x < width; x++) {
+                if (isFilled(x,y)) {
                     output.append("x ");
                 } else {
                     output.append("_ ");
@@ -106,7 +109,7 @@ public class Boardstate {
         int points = 0;
         for (Coordinate member : unit.getAbsoluteMembers(unitPlace, rotated)) {
             assert !isFilled(member);
-            filled[member.x][member.y] = true;
+            filled[cellIndex(member)] = true;
             points++;
         }
         int linesCleared = clearFullLines();
@@ -117,11 +120,11 @@ public class Boardstate {
     }
     
     public int calculatePotentialPoints(Unit unit, Coordinate unitPlace, int rotated) {
-    	boolean[][] backupFilled = clone2DArray(filled);
+        boolean[] backupFilled = Arrays.copyOf(filled, filled.length);
     	int backupLinesClearedOld = linesClearedOld;
     	int points = applyLocking(unit, unitPlace, rotated);
     	linesClearedOld = backupLinesClearedOld;
-    	filled = backupFilled;
+    	System.arraycopy(backupFilled, 0, filled, 0, filled.length);
     	return points;
     }
 
@@ -144,16 +147,8 @@ public class Boardstate {
     }
 
     private void clearLine(int y) {
-        //track back up again, replacing each line with the contents of the previous one
-        for (; y > 0; y--) {
-            for (int x = 0; x < width; x++) {
-                filled[x][y] = filled[x][y-1];
-            }
-        }
-        //replacing topmost line with empty fields
-        for (int x = 0; x < width; x++) {
-            filled[x][0] = false;
-        }
+        System.arraycopy(filled, 0, filled, width, y * width);
+        Arrays.fill(filled, 0, width, false);
     }
 
 
@@ -175,37 +170,38 @@ public class Boardstate {
     public int getHeight() {
         return height;
     }
+    
 
-	public boolean doesFillRow(Coordinate position, Unit currentUnit) {
-		boolean[][] withUnitApplied = clone2DArray(filled);
-		List<Integer> usedY = new ArrayList<>();
+    public boolean doesFillRow(Coordinate position, Unit currentUnit) {
         List<Coordinate> coordinates = currentUnit.getAbsoluteMembers(position);
         for (Coordinate coordinate : coordinates) {
             if (isOutside(coordinate)) return false;
             if (isFilled(coordinate)) return false;
-            withUnitApplied[coordinate.x][coordinate.y] = true;
-            if (!usedY.contains(coordinate.y)) usedY.add(coordinate.y);
         }
-        outer: for (int y : usedY) {
-        	for (int x = 0; x < width; x++) {
-        		if (!withUnitApplied[x][y]) continue outer;
-        	}
-        	return true;
+        for (Coordinate coordinate : coordinates) {
+            boolean full = true;
+            int y = coordinate.y;
+            for (int x = 0; x < width; x++) {
+                if (!(isFilled(x, y) || inUnit(coordinates, x, y))) {
+                    full = false;
+                    break;
+                }
+            }
+            if (full) {
+                return true;
+            }
         }
         return false;
-	}
-	
-	public static boolean[][] clone2DArray(boolean[][] array) {
-	    int rows=array.length;
-	    //clone the 'shallow' structure of array
-	    boolean[][] newArray =(boolean[][]) array.clone();
-	    //clone the 'deep' structure of array
-	    for(int row=0;row<rows;row++){
-	        newArray[row]=(boolean[]) array[row].clone();
-	    }
-	    return newArray;
-	}
+    }
 
+    private static boolean inUnit(List<Coordinate> cs, int x, int y) {
+        for (Coordinate c : cs) {
+            if (c.x == x && c.y == y) {
+                return true;
+            }
+        }
+        return false;
+    }
 	
  public List<Command> getLockingMoves(Unit unit, Coordinate position) {
 	 //we do not need to check visited locations, because we only take positions which are invalid, thus we cannot have been there
@@ -224,7 +220,7 @@ public class Boardstate {
  	}
  
  public List<Command> getFillingMoves(int depth, Unit unit, Coordinate position) {
-	 List<Command> possible = new ArrayList<>();
+	 List<Command> possible = new ArrayList<>(6);
 	 if (depth == 0) {
 		 if (doesFillRow(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
 		 if (doesFillRow(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);

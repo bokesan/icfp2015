@@ -2,11 +2,11 @@
 module Board (
        Move(..),
        Cell(..),
-       Unit(..),
-       Problem(..),
+       Unit(..), ppUnit,
+       Problem(..), cells,
        Solution(..),
-       move, validPos, dimensions, translate,
-       lock, atBottom
+       move, validPos, dimensions, translate, below, distance,
+       lock, atBottom, rotations
   ) where
 
 import Control.Monad
@@ -27,6 +27,11 @@ data Cell = Cell !Int !Int deriving (Eq, Ord)
 instance Show Cell where
   showsPrec _ (Cell x y) = showChar '(' . shows x . showChar ',' . shows y . showChar ')'
 
+-- abstract measure of cell distance, no particular unit
+cellDistance :: Cell -> Cell -> Int
+cellDistance (Cell x1 y1) (Cell x2 y2)
+   = sq (x2-x1) + sq (x2-y1)
+     where sq x = x * x
 
 evenRow :: Cell -> Bool
 evenRow (Cell _ y) = (y .&. 1) == 0
@@ -148,6 +153,12 @@ instance FromJSON Problem where
     parseJSON _ = mzero
 
 
+below :: Unit -> Unit -> Bool
+Unit (Cell _ r1) _ `below` Unit (Cell _ r2) _ = r1 > r2
+
+distance :: Unit -> Unit -> Int
+distance (Unit p1 _) (Unit p2 _) = cellDistance p1 p2
+
 validCell :: Problem -> Cell -> Bool
 validCell p cell@(Cell x y) =
     (x >= 0 && x < pWidth p && y >= 0 && y < pHeight p &&
@@ -178,4 +189,21 @@ removeFullRows p cs1 = foldr rem cs1 [0 .. pHeight p - 1]
                | otherwise = cs
     w = pWidth p
     isFullRow row cs = w == length [c | Cell c r <- cs, r == row]
-    remRow row cs = [Cell c (if r < row then r+1 else r) | Cell c r <- cs, r /= row] 
+    remRow row cs = [Cell c (if r < row then r+1 else r) | Cell c r <- cs, r /= row]
+
+rotations :: Unit -> [Unit]
+rotations u = [ (n `times` rotateCW) u | n <- [0..5] ]
+
+cells :: Problem -> [Cell]
+cells problem = [ Cell x y | x <- [0..lastCol], y <- [0..lastRow] ]
+  where lastCol = pWidth problem - 1
+        lastRow = pHeight problem - 1
+
+ppUnit :: Unit -> String
+ppUnit u@(Unit _ ms) =
+  let (minX, maxX, minY, maxY) = dimensions u
+      row y = concat [cell x y | x <- [minX..maxX]]
+      cell x y | Cell x y `elem` ms = "#"
+               | otherwise = " "
+  in
+     concat [row n ++ "\n" | n <- [minY..maxY]]

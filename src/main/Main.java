@@ -95,7 +95,17 @@ public class Main {
                             break;
                 case "-p" : powerWords.add(value.replace("\"", ""));
                             break;
-                default:    //nothing, ignore;
+                case "--delay":
+                    // delay for attaching profile
+                    try {
+                        Thread.sleep(30000);
+                    } catch (InterruptedException e) {
+                        // can ignore here
+                    }
+                    break;
+                default:
+                    System.err.println("warning: unknown argument " + flag);
+                    break;
             }
         }
         return new Arguments(files, powerWords, seconds, megabytes);

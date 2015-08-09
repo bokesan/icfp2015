@@ -1,6 +1,5 @@
 package main;
 
-import commands.CommandSequence;
 import solver.PathFinder;
 
 public class Solution {

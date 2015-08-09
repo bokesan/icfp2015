@@ -32,6 +32,11 @@ public class Coordinate implements Comparable<Coordinate> {
     }
 
     @Override
+    public int hashCode() {
+        return 59 * x + y;
+    }
+    
+    @Override
     public int compareTo(Coordinate other) {
         int result = x - other.x;
         if (result == 0) {
