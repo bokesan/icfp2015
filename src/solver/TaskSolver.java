@@ -46,6 +46,7 @@ public class TaskSolver {
     		chooser.chooseCharacters(subSolution.options);
     		subSolution.points = subSolution.points + chooser.getPowerWordPoints();
     		subSolution.commands = chooser.getCommandString();
+    		subSolution.mode = mode;
     		subSolutions.add(subSolution);
     	}
     	TaskSolution bestSolution = subSolutions.get(0);
@@ -59,6 +60,7 @@ public class TaskSolver {
         solution.seed = stream.getSeed();
         solution.commandString = bestSolution.commands;
         solution.points = bestSolution.points;
+        solution.mode = bestSolution.mode;
         return solution;
     }
 
@@ -83,6 +85,7 @@ public class TaskSolver {
     	public CommandPathOptions options;
     	public int points;
     	public String commands;
+    	public PathFinder.Mode mode;
 	}
 
     private boolean nextUnitCanSpawn(Boardstate board, SourceStream stream) {

@@ -19,10 +19,12 @@ import java.util.List;
 
 public class Main {
 	
-	private static final String TAG = "width-bug-fixed";
+	private static final String TAG = "long-power";
+	private static final boolean DEV_MODE = true;
 
     public static void main(String[] args) throws IOException {
-    	//System.out.println(Command.translate("Ph'nglui mglw'nafh Cthulhu R'lyeh wgah'nagl fhtagn.".toLowerCase()));
+    	Statistics stats = new Statistics();
+    	//System.out.println("davar: " + Command.translate("davar".toLowerCase()));
         Arguments arguments = processArgs(args);
         List<Solution> solutions = new ArrayList<>();
         for (String fileString : arguments.getFiles()) {
@@ -35,10 +37,12 @@ public class Main {
                 solution.id = id;
                 solutions.add(solution);
             }
-            createJsonOutput(solutions);
-            solutions.clear();
+            if (DEV_MODE) stats.add(solutions);
+            if (DEV_MODE) createJsonOutput(solutions);
+            if (DEV_MODE) solutions.clear();
         }
-        //createJsonOutput(solutions);
+        if (!DEV_MODE) createJsonOutput(solutions);
+        if (DEV_MODE) stats.writeStatsFile("results/stats.txt");
     }
 
     private static void createJsonOutput(List<Solution> solutions) {
@@ -53,10 +57,9 @@ public class Main {
             combined.put(output);
             points += solution.points;
         }
-        int average = (int) Math.floor(points / solutions.size());
-        String file = solutions.get(0).id + "_" + solutions.size() + "_" + average + "_" + TAG;
-        writeOutputFile(combined.toString(), file);
-        //System.out.println(combined.toString());
+        String file = solutions.get(0).id + "_" + "_" + TAG;
+        if (DEV_MODE) writeOutputFile(combined.toString(), file);
+        if (!DEV_MODE) System.out.println(combined.toString());
     }
 
     private static void writeOutputFile(String result, String filename) {
