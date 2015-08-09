@@ -36,6 +36,16 @@ public class SourceStream {
         }
         remainingStream = new ArrayList<>(fullStream);
     }
+    
+    private SourceStream(int seed, List<Unit> fullStream, List<Unit> remainingStream) {
+    	this.seed = seed;
+    	this.fullStream = new ArrayList<>(fullStream);
+    	this.remainingStream = new ArrayList<>(remainingStream);
+    }
+    
+    public SourceStream getCopy() {
+    	return new SourceStream(seed, fullStream, remainingStream);
+    }
 
     public Unit popNextUnit() {
         Unit unit = remainingStream.get(0);

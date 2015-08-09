@@ -21,6 +21,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         Arguments arguments = processArgs(args);
+        
         List<Solution> solutions = new ArrayList<>();
         for (String fileString : arguments.getFiles()) {
             String jsonString = new String(Files.readAllBytes(Paths.get(fileString)));
@@ -45,7 +46,7 @@ public class Main {
             JSONObject output = new JSONObject();
             output.put("problemId", solution.id);
             output.put("seed", solution.seed);
-            output.put("tag", "ia! added");
+            output.put("tag", "sunday morning");
             output.put("solution", solution.commandString);
             combined.put(output);
             points += solution.points;
@@ -83,9 +84,9 @@ public class Main {
                             break;
                 case "-m" : megabytes = Integer.parseInt(value);
                             break;
-                case "-p" : powerWords.add(value);
+                case "-p" : powerWords.add(value.replace("\"", ""));
                             break;
-                default:    throw new IllegalArgumentException("Invalid argument: " + flag);
+                default:    //nothing, ignore;
             }
         }
         return new Arguments(files, powerWords, seconds, megabytes);

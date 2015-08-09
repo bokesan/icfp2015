@@ -17,13 +17,14 @@ public class Boardstate {
     private int height;
     private boolean[][] filled;
     private int linesClearedOld = 0;
+    private JSONObject sourceJson;
 
-    public Boardstate(int width, int height, boolean[][] filled) {
-        this.width = width;
-        this.height = height;
-        this.filled = filled;
-        checkDimensions();
-    }
+//    public Boardstate(int width, int height, boolean[][] filled) {
+//        this.width = width;
+//        this.height = height;
+//        this.filled = filled;
+//        checkDimensions();
+//    }
 
     private void checkDimensions() {
         assert filled.length == width;
@@ -34,7 +35,12 @@ public class Boardstate {
         this.height = json.getInt("height");
         this.width = json.getInt("width");
         this.filled = convertFilled(json.getJSONArray("filled"));
+        this.sourceJson = json;
         checkDimensions();
+    }
+    
+    public Boardstate getInitialStateClone() {
+    	return new Boardstate(sourceJson);
     }
 
     private boolean[][] convertFilled(JSONArray filledJson) {
