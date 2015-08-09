@@ -18,8 +18,7 @@ import java.util.List;
 
 public class Main {
 	
-	public static final String TAG = "evolve-word-ahead";
-	private static final boolean DEV_MODE = true;
+	public static final String TAG = "evolve-2";
 
     public static void main(String[] args) throws IOException {
     	long starttime = System.currentTimeMillis();
@@ -40,16 +39,16 @@ public class Main {
                 solution.seconds = (int) Math.ceil(time / 1000);
                 solutions.add(solution);
             }
-            if (DEV_MODE) stats.add(solutions);
-            if (DEV_MODE) createJsonOutput(solutions);
-            if (DEV_MODE) solutions.clear();
+            if (arguments.stats) stats.add(solutions);
+            if (arguments.devMode) createJsonOutput(solutions, true);
+            if (arguments.devMode) solutions.clear();
         }
-        if (!DEV_MODE) createJsonOutput(solutions);
+        if (!arguments.devMode) createJsonOutput(solutions, false);
         long duration = System.currentTimeMillis() - starttime;
-        if (DEV_MODE) stats.writeStatsFile("results/stats.txt", duration);
+        if (arguments.stats) stats.writeStatsFile("results/stats.txt", duration);
     }
 
-    private static void createJsonOutput(List<Solution> solutions) {
+    private static void createJsonOutput(List<Solution> solutions, boolean writefile) {
         JSONArray combined = new JSONArray();
         long points = 0;
         for (Solution solution : solutions) {
@@ -62,8 +61,8 @@ public class Main {
             points += solution.points;
         }
         String file = solutions.get(0).id + "_" + TAG;
-        if (DEV_MODE) writeOutputFile(combined.toString(), file);
-        if (!DEV_MODE) System.out.println(combined.toString());
+        if (writefile) writeOutputFile(combined.toString(), file);
+        if (!writefile) System.out.println(combined.toString());
     }
 
     private static void writeOutputFile(String result, String filename) {
@@ -83,18 +82,27 @@ public class Main {
         List<String> powerWords = new ArrayList<String>();
         int seconds = 0;
         int megabytes = 0;
+        boolean devmode = false;
+        boolean stats = false;
+        int cores = 0;
         for (int i = 0; i < args.length - 1; i += 2) {
             String flag = args[i];
             String value = args[i + 1];
             switch (flag) {
-                case "-f" : files.add(value);
-                            break;
-                case "-t" : seconds = Integer.parseInt(value);
-                            break;
-                case "-m" : megabytes = Integer.parseInt(value);
-                            break;
-                case "-p" : powerWords.add(value.replace("\"", ""));
-                            break;
+                case "-c" :     cores = Integer.parseInt(value);
+                                break;
+                case "-dev" :   devmode = Boolean.parseBoolean(value);
+                                break;
+                case "-stats" : stats = Boolean.parseBoolean(value);
+                                break;
+                case "-f" :     files.add(value);
+                                break;
+                case "-t" :     seconds = Integer.parseInt(value);
+                                break;
+                case "-m" :     megabytes = Integer.parseInt(value);
+                                break;
+                case "-p" :     powerWords.add(value.replace("\"", ""));
+                                break;
                 case "--delay":
                     // delay for attaching profile
                     try {
@@ -108,20 +116,24 @@ public class Main {
                     break;
             }
         }
-        return new Arguments(files, powerWords, seconds, megabytes);
+        return new Arguments(files, powerWords, seconds, megabytes, devmode, stats, cores);
     }
 
     private static class Arguments {
         private final List<String> files;
         private final List<String> powerWords;
         public final int secondsTimeLimit;
-        public final int megabyteRamLimit;
+        public final boolean devMode;
+        public final boolean stats;
+        public final int cores;
 
-        public Arguments(List<String> files, List<String> powerWords, int seconds, int megabytes) {
+        public Arguments(List<String> files, List<String> powerWords, int seconds, int megabytes, boolean devmode, boolean stats, int cores) {
             this.files = new ArrayList<String>(files);
             this.powerWords = new ArrayList<String>(powerWords);
             this.secondsTimeLimit = seconds;
-            this.megabyteRamLimit = megabytes;
+            this.devMode = devmode;
+            this.stats = stats;
+            this.cores = cores;
         }
 
         public List<String> getFiles() {
