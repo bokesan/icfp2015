@@ -1,11 +1,26 @@
 "use strict";
 
-var size = 1;
+// colors
+const MAP_COLOR            = '#ffffe8';
+const MAP_BACKGROUND_COLOR = '#ffffff';
+const FILLED_COLOR         = '#f0f040';
+const UNIT_COLOR           = '#ffb000';
+const UNIT_OVERLAP_COLOR   = '#ff6000';
+const PIVOT_COLOR          = '#209010';
 
-var MAP_COLOR    = '#f0f0f0';
-var FILLED_COLOR = '#e0e040';
-var UNIT_COLOR   = '#ffb000';
-var UNIT_OVERLAP_COLOR   = '#ff6000';
+// directions and moves
+const DIR_E   = 0;
+const DIR_SE  = 1;
+const DIR_SW  = 2;
+const DIR_W   = 3;
+const DIR_NW  = 4;
+const DIR_NE  = 5;
+const ROT_CW  = 6;
+const ROT_CCW = 7;
+const LOCK    = 8;
+const STOP    = 9;
+
+var size = 42;
 
 var problem = {};
 
@@ -14,21 +29,6 @@ var prevPositions = [];
 var numSpawned = 0;
 var score = 0;
 
-// directions and moves
-var DIR_E = 0;
-var DIR_SE = 1;
-var DIR_SW = 2;
-var DIR_W = 3;
-var DIR_NW = 4;
-var DIR_NE = 5;
-var ROT_CW = 6;
-var ROT_CCW = 7;
-var LOCK = 8;
-var STOP = 9;
-
-//                E,     SE,     SW,      W,        NW,       NE
-var OFFS =    [  [ 1, 0,  0, 1,   -1, 1,   -1, 0,    -1, -1,   0, -1 ],   // even row
-                 [ 1, 0,  1, 1,   0, 1,    -1, 0,    0, -1,    1, -1 ] ]; // odd row
 
 // ===== Sounds =====
 
@@ -296,7 +296,7 @@ function drawHex(ctx) {
 function drawPivot(ctx) {
   ctx.save();
   ctx.translate(size / 2, size / 2);
-  ctx.fillStyle = '#209010';
+  ctx.fillStyle = PIVOT_COLOR;
   ctx.beginPath();
   ctx.arc(0, -size / 7, size / 4.5, 0, Math.PI*2, true); 
   ctx.fill();
@@ -339,7 +339,7 @@ function drawMap() {
     var row, col, w;
     var xy;
 
-    c.fillStyle = '#909050';
+    c.fillStyle = MAP_BACKGROUND_COLOR;
     c.fillRect(0, 0, m.width, m.height);
     c.fillStyle = MAP_COLOR;
     c.strokeStyle = 'black';
@@ -416,6 +416,11 @@ function translateCell(cell, x, y) {
     }
     return { x: cell.x + x, y: cell.y + y };
 }
+
+
+//                E,     SE,     SW,      W,        NW,       NE
+const OFFS =  [  [ 1, 0,  0, 1,   -1, 1,   -1, 0,    -1, -1,   0, -1 ],   // even row
+                 [ 1, 0,  1, 1,   0, 1,    -1, 0,    0, -1,    1, -1 ] ]; // odd row
 
 function moveCell(cell, direction) {
     var offs = OFFS[cell.y & 1];
@@ -607,10 +612,10 @@ function computeMove() {
         tryMove(DIR_SW) || tryMove(DIR_SE) || tryMove(DIR_W) || tryMove(DIR_E)
           || tryMove(ROT_CW) || tryMove(ROT_CCW)
           || tryMove(LOCK);
-        drawMap();
-        drawUnit();
-        $('#solution').text(encodeSolution(solution));
-        $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned);
+        // drawMap();
+        // drawUnit();
+        // $('#solution').text(encodeSolution(solution));
+        // $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned);
     }
 }
 
@@ -631,7 +636,7 @@ function humanMove(move) {
 function runSolution() {
     var i = 0;
     var n = extSol[0].solution.length;
-    for (i = 0; i < n; i++) {
+    for (i = 0; i < n && unit; i++) {
         var move;
         var c = extSol[0].solution.charAt(i);
         if ('dqrvz1'.indexOf(c) >= 0) {
@@ -709,10 +714,10 @@ $(document).ready(function(){
         runSolution();
         drawMap();
         drawUnit();
+        $('#solution').text(encodeSolution(solution));
+        $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned);
     });
     
-    size = 40;
-
     sound_move = new Audio('move.wav');
     sound_lock = new Audio('lock.wav');
     sound_end = new Audio('end.wav');
