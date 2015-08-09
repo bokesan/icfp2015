@@ -30,6 +30,8 @@ public class CommandChooser {
     }
 
     public void chooseCharacters(CommandPathOptions commandOptions) {
+    	points = 0;
+    	commandString = "";
         StringBuilder commandBuilder = new StringBuilder();
         for (CommandBranch branch : commandOptions.getBranches()) {
             //todo change from taking first branch when power words work

@@ -44,4 +44,8 @@ public class Coordinate implements Comparable<Coordinate> {
         }
         return result;
     }
+    
+    public String toString() {
+    	return "(" + x + "," + y + ")";
+    }
 }
