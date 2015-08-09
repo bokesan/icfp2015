@@ -10,7 +10,8 @@ import units.Coordinate;
 import units.Unit;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -18,17 +19,8 @@ public class Boardstate {
 
     private final int width;
     private final int height;
-
-    // filled cells, row-wise
-    private final boolean[] filled;
     
-    private int cellIndex(int x, int y) {
-        return y * width + x;
-    }
-    
-    private int cellIndex(Coordinate c) {
-        return cellIndex(c.x, c.y);
-    }
+    private final BitSet[] filled;
     
     private int linesClearedOld = 0;
     private final JSONObject sourceJson;
@@ -44,24 +36,48 @@ public class Boardstate {
     	return new Boardstate(sourceJson);
     }
 
-    private boolean[] convertFilled(JSONArray filledJson) {
-        boolean[] filled = new boolean[width*height];
+    private BitSet[] convertFilled(JSONArray filledJson) {
+        BitSet[] filled = new BitSet[height];
+        for (int i = 0; i < height; i++) {
+            filled[i] = new BitSet(width);
+        }
         int n = filledJson.length();
         for (int i = 0; i < n; i++) {
             JSONObject point = filledJson.getJSONObject(i);
             int x = point.getInt("x");
             int y = point.getInt("y");
-            filled[cellIndex(x,y)] = true;
+            filled[y].set(x);
         }
         return filled;
     }
 
-    public boolean isFilled(int x, int y) {
-        return filled[cellIndex(x,y)];
+    /**
+     * Cell filled?
+     * <p>
+     * <b>Caution:</b> throws Exception when coordinated out of board.
+     */
+    private boolean isFilled(int x, int y) {
+        return filled[y].get(x);
     }
 
     private boolean isFilled(Coordinate coordinate) {
         return isFilled(coordinate.x, coordinate.y);
+    }
+    
+    private void setFilled(int x, int y, boolean value) {
+        filled[y].set(x, value);
+    }
+    
+    private void setFilled(Coordinate c, boolean value) {
+        setFilled(c.x, c.y, value);
+    }
+    
+    private boolean isFull(int row) {
+        return filled[row].cardinality() == width;
+    }
+    
+    private int freeInRow(int row) {
+        return width - filled[row].cardinality();
     }
     
 
@@ -87,18 +103,22 @@ public class Boardstate {
         return canPlaceUnit(pivotSpawnPoint, unit);
     }
 
-    public boolean canPlaceUnit(Coordinate pivotPoint, Unit unit) {
-        return canPlaceUnit(pivotPoint, unit, new ArrayList<VisitedState>());
+    private boolean canPlaceUnit(Coordinate pivotPoint, Unit unit) {
+        return isValidPosition(unit, pivotPoint);
     }
 
     public boolean canPlaceUnit(Coordinate pivotPoint, Unit unit, List<VisitedState> visited) {
-        if (visited.contains(new VisitedState(pivotPoint, unit))) return false;
-        List<Coordinate> coordinates = unit.getAbsoluteMembers(pivotPoint);
-        for (Coordinate coordinate : coordinates) {
-            if (isOutside(coordinate)) return false;
-            if (isFilled(coordinate)) return false;
+        if (visitedContains(visited, pivotPoint, unit)) return false;
+        return isValidPosition(unit, pivotPoint);
+    }
+    
+    private static boolean visitedContains(List<VisitedState> visited, Coordinate c, Unit u) {
+        for (VisitedState st : visited) {
+            if (st.position.equals(c) && st.unit.equals(u)) {
+                return true;
+            }
         }
-        return true;
+        return false;
     }
 
     private boolean isOutside(Coordinate coordinate) {
@@ -109,36 +129,21 @@ public class Boardstate {
         int points = 0;
         for (Coordinate member : unit.getAbsoluteMembers(unitPlace, rotated)) {
             assert !isFilled(member);
-            filled[cellIndex(member)] = true;
+            setFilled(member, true);
             points++;
         }
         int linesCleared = clearFullLines();
         points += 50 * (1 + linesCleared) * linesCleared;
-        if (linesClearedOld > 1) points += Math.floor((linesClearedOld - 1) * points / 10);
+        if (linesClearedOld > 1) points += Math.floor((linesClearedOld - 1) * points / 10.0);
         linesClearedOld = linesCleared;
         return points;
     }
     
-    public int calculatePotentialPoints(Unit unit, Coordinate unitPlace, int rotated) {
-        boolean[] backupFilled = Arrays.copyOf(filled, filled.length);
-    	int backupLinesClearedOld = linesClearedOld;
-    	int points = applyLocking(unit, unitPlace, rotated);
-    	linesClearedOld = backupLinesClearedOld;
-    	System.arraycopy(backupFilled, 0, filled, 0, filled.length);
-    	return points;
-    }
-
+    
     private int clearFullLines() {
         int linesCleared = 0;
         for (int y = 0; y < height; y++) {
-            boolean lineFull = true;
-            for (int x = 0; x < width; x++) {
-                if (!isFilled(x, y)) {
-                    lineFull = false;
-                    break;
-                }
-            }
-            if (lineFull) {
+            if (isFull(y)) {
                 clearLine(y);
                 linesCleared ++;
             }
@@ -147,8 +152,10 @@ public class Boardstate {
     }
 
     private void clearLine(int y) {
-        System.arraycopy(filled, 0, filled, width, y * width);
-        Arrays.fill(filled, 0, width, false);
+        for (int i = y; i > 0; i--) {
+            filled[i] = filled[i-1];
+        }
+        filled[0] = new BitSet(width);
     }
 
 
@@ -157,7 +164,7 @@ public class Boardstate {
     }
 
     public List<Command> getNonLockingMoves(Unit unit, Coordinate position, List<VisitedState> visited) {
-        List<Command> possible = new ArrayList<>();
+        List<Command> possible = new ArrayList<>(6);
         if (canPlaceUnit(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
         if (canPlaceUnit(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
         if (canPlaceUnit(position.move(Command.EAST), unit, visited)) possible.add(Command.EAST);
@@ -174,21 +181,23 @@ public class Boardstate {
 
     public boolean doesFillRow(Coordinate position, Unit currentUnit) {
         List<Coordinate> coordinates = currentUnit.getAbsoluteMembers(position);
-        for (Coordinate coordinate : coordinates) {
-            if (isOutside(coordinate)) return false;
-            if (isFilled(coordinate)) return false;
+        if (!isValidPosition(coordinates)) {
+            return false;
         }
+        int unitSize = coordinates.size();
         for (Coordinate coordinate : coordinates) {
-            boolean full = true;
             int y = coordinate.y;
-            for (int x = 0; x < width; x++) {
-                if (!(isFilled(x, y) || inUnit(coordinates, x, y))) {
-                    full = false;
-                    break;
+            if (unitSize >= freeInRow(y)) {
+                boolean full = true;
+                for (int x = 0; x < width; x++) {
+                    if (!(isFilled(x, y) || inUnit(coordinates, x, y))) {
+                        full = false;
+                        break;
+                    }
                 }
-            }
-            if (full) {
-                return true;
+                if (full) {
+                    return true;
+                }
             }
         }
         return false;
@@ -203,39 +212,85 @@ public class Boardstate {
         return false;
     }
 	
- public List<Command> getLockingMoves(Unit unit, Coordinate position) {
-	 //we do not need to check visited locations, because we only take positions which are invalid, thus we cannot have been there
-	 List<Command> possible = new ArrayList<>();
-     if (!canPlaceUnit(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
-     if (!canPlaceUnit(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
-     if (!canPlaceUnit(position.move(Command.EAST), unit)) possible.add(Command.EAST);
-     if (!canPlaceUnit(position.move(Command.WEST), unit)) possible.add(Command.WEST);
-     if (!canPlaceUnit(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
-     if (!canPlaceUnit(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
-     return possible;
-	}
+    public List<Command> getLockingMoves(Unit unit, Coordinate position) {
+        //we do not need to check visited locations, because we only take positions which are invalid, thus we cannot have been there
+        List<Command> possible = new ArrayList<>(6);
+        if (!canPlaceUnit(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
+        if (!canPlaceUnit(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
+        if (!canPlaceUnit(position.move(Command.EAST), unit)) possible.add(Command.EAST);
+        if (!canPlaceUnit(position.move(Command.WEST), unit)) possible.add(Command.WEST);
+        if (!canPlaceUnit(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
+        if (!canPlaceUnit(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
+        return possible;
+    }
 
- public List<Command> getFillingMoves(Unit unit, Coordinate position) {
-	 return getFillingMoves(0, unit, position);
- 	}
- 
- public List<Command> getFillingMoves(int depth, Unit unit, Coordinate position) {
-	 List<Command> possible = new ArrayList<>(6);
-	 if (depth == 0) {
-		 if (doesFillRow(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
-		 if (doesFillRow(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
-		 if (doesFillRow(position.move(Command.EAST), unit)) possible.add(Command.EAST);
-		 if (doesFillRow(position.move(Command.WEST), unit)) possible.add(Command.WEST);
-		 if (doesFillRow(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
-		 if (doesFillRow(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
-	 } else {
-		 if (!getFillingMoves(depth - 1, unit, position.move(Command.SOUTHEAST)).isEmpty()) possible.add(Command.SOUTHEAST);
-		 if (!getFillingMoves(depth - 1, unit, position.move(Command.EAST)).isEmpty()) possible.add(Command.EAST);
-		 if (!getFillingMoves(depth - 1, unit, position.move(Command.SOUTHWEST)).isEmpty()) possible.add(Command.SOUTHWEST);
-		 if (!getFillingMoves(depth - 1, unit, position.move(Command.WEST)).isEmpty()) possible.add(Command.WEST);
-		 if (!getFillingMoves(depth - 1, unit.getRotatedUnit(1), position).isEmpty()) possible.add(Command.CLOCKWISE);
-		 if (!getFillingMoves(depth - 1, unit.getRotatedUnit(5), position).isEmpty()) possible.add(Command.COUNTERCLOCKWISE);
-	 }
-     return possible;
- 	}
+    public List<Command> getFillingMoves(int depth, Unit unit, Coordinate position) {
+        if (!(fillableRows(unit) && isValidPosition(unit, position))) {
+            return Collections.emptyList();
+        }
+        List<Command> possible = new ArrayList<>(6);
+        if (depth <= 0) {
+            if (doesFillRow(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
+            if (doesFillRow(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
+            if (doesFillRow(position.move(Command.EAST), unit)) possible.add(Command.EAST);
+            if (doesFillRow(position.move(Command.WEST), unit)) possible.add(Command.WEST);
+            if (doesFillRow(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
+            if (doesFillRow(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
+        } else {
+            if (hasFillingMoves(depth - 1, unit, position.move(Command.SOUTHEAST))) possible.add(Command.SOUTHEAST);
+            if (hasFillingMoves(depth - 1, unit, position.move(Command.EAST))) possible.add(Command.EAST);
+            if (hasFillingMoves(depth - 1, unit, position.move(Command.SOUTHWEST))) possible.add(Command.SOUTHWEST);
+            if (hasFillingMoves(depth - 1, unit, position.move(Command.WEST))) possible.add(Command.WEST);
+            if (hasFillingMoves(depth - 1, unit.getRotatedUnit(1), position)) possible.add(Command.CLOCKWISE);
+            if (hasFillingMoves(depth - 1, unit.getRotatedUnit(5), position)) possible.add(Command.COUNTERCLOCKWISE);
+        }
+        return possible;
+    }
+    
+    /**
+     * Are there any rows this unit could possibly fill?
+     */
+    private boolean fillableRows(Unit unit) {
+        int size = unit.size();
+        for (int y = height - 1; y >= 0; y--) {
+            if (size >= freeInRow(y)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasFillingMoves(int depth, Unit unit, Coordinate position) {
+        if (!isValidPosition(unit, position)) {
+            return false;
+        }
+        if (depth <= 0) {
+            return ((doesFillRow(position.move(Command.SOUTHEAST), unit)) ||
+                    (doesFillRow(position.move(Command.SOUTHWEST), unit)) ||
+                    (doesFillRow(position.move(Command.EAST), unit)) ||
+                    (doesFillRow(position.move(Command.WEST), unit)) ||
+                    (doesFillRow(position, unit.getRotatedUnit(1))) ||
+                    (doesFillRow(position, unit.getRotatedUnit(5))));
+        } else {
+            return ((hasFillingMoves(depth - 1, unit, position.move(Command.SOUTHEAST))) ||
+                    (hasFillingMoves(depth - 1, unit, position.move(Command.SOUTHWEST))) ||
+                    (hasFillingMoves(depth - 1, unit, position.move(Command.EAST))) ||
+                    (hasFillingMoves(depth - 1, unit, position.move(Command.WEST))) ||
+                    (hasFillingMoves(depth - 1, unit.getRotatedUnit(1), position)) ||
+                    (hasFillingMoves(depth - 1, unit.getRotatedUnit(5), position)));
+        }
+    }
+
+    private boolean isValidPosition(List<Coordinate> members) {
+        for (Coordinate c : members) {
+            if (isOutside(c) || isFilled(c)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isValidPosition(Unit unit, Coordinate position) {
+        return isValidPosition(unit.getAbsoluteMembers(position));
+    }
  }
