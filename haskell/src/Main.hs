@@ -18,15 +18,15 @@ process :: [String] -> IO [Solution]
 process [] = return []
 process ("-f" : f : args) = do
           problem <- readProblem f
-          let xs1 = Prelude.map (runWithSeed problem) (pSourceSeeds problem)
+          let xs1 = Prelude.map (playWithSeed problem) (pSourceSeeds problem)
           xs <- process args
           return (xs1 ++ xs)
 process (('-':_) : _ : args) = process args
 
 
-runWithSeed :: Problem -> Integer -> Solution
-runWithSeed problem seed =
-   let moves = run problem seed
+playWithSeed :: Problem -> Integer -> Solution
+playWithSeed problem seed =
+   let moves = play problem seed
        s = Solution{sProblemId = pId problem,
                     sSeed = seed,
                     sTag = T.pack "",
