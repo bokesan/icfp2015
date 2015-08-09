@@ -24,6 +24,7 @@ const STOP    = 9;
 const Q_DEPTH_FACTOR = 100;
 const Q_COVERED = 30;
 const Q_PART_COVERED = 10;
+const Q_INVALID = 1000000; // Number.MAX_VALUE;
 
 
 var size = 42;
@@ -157,6 +158,7 @@ function isValidLocation(unit) {
     return true;
 }
 
+
 function atBottom(unit) {
     var dim = unitDimensions(unit);
     return dim.max_y >= (problem.height - 1);
@@ -202,14 +204,29 @@ function cover_badness(c) {
     }
 }
 
+// empty board is good, filled at top is worse than at bottom
+// and borders are slightly better than middle
+function fill_badness() {
+    var q = 0;
+    var rf = Q_DEPTH_FACTOR * Q_DEPTH_FACTOR / (problem.width * problem.height);
+    var cf = rf / 50;
+    var w2 = (problem.width - 1) / 2;
+    problem.filled.forEach(function (c) {
+        q += rf * (problem.height - c.y);
+        q += cf * (w2 - Math.abs(c.x - w2));
+    });
+    return q;
+}
+
+
 // evaluate quality of current board position
 // lower is better
 function quality() {
     var row, col, cell;
     var q = 0;
-    // "low" is good
-    q += 100 * (problem.height - topmost_row_used());
+    q += fill_badness();
     // holes are bad
+    /*
     for (row = 1; row < problem.height; row++) {
         for (col = 0; col < problem.width; col++) {
             cell = {x: col, y: row};
@@ -218,6 +235,7 @@ function quality() {
             }
         }
     }
+    */
     return q;
 }
 
@@ -436,8 +454,8 @@ function spawnUnit(index) {
     var width = 1 + dim.max_x - dim.min_x;
     var space = problem.width - width;
     var xoffs = Math.floor(space / 2) - dim.min_x;
-    // alert('width: ' + width + ', offs ' + xoffs + ',' + yoffs);
     unit = translateUnit(unit, xoffs, yoffs);
+    lastQuality = Q_INVALID;
 }
 
 
@@ -650,7 +668,7 @@ function tryMoveX(move, lockIfInvalid) {
 }
 
 
-function computeMove() {
+function computeMove_simple() {
     if (!isValidLocation(unit)) {
         tryMove(STOP);
     }
@@ -661,11 +679,94 @@ function computeMove() {
         tryMove(DIR_SW) || tryMove(DIR_SE) || tryMove(DIR_W) || tryMove(DIR_E)
           || tryMove(ROT_CW) || tryMove(ROT_CCW)
           || tryMove(LOCK);
-        // drawMap();
-        // drawUnit();
-        // $('#solution').text(encodeSolution(solution));
-        // $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned);
     }
+}
+
+function myClone(obj) {
+    return JSON.parse(JSON.stringify(obj));
+}
+
+
+function evalMove(move) {
+    var oldProblem = myClone(problem);
+    var oldUnit = myClone(unit);
+    var oldPos = myClone(prevPositions);
+    var oldSol = myClone(solution);
+    var oldNumSpawned = numSpawned;
+    var oldScore = score;
+    var oldSeed = seed;
+    var oldLs = ls_old;
+
+    var q;
+    if (tryMove(move)) {
+        if (move !== LOCK) {
+            lockUnit();
+        }
+        q = quality();
+    } else {
+        q = Q_INVALID;
+    }
+    problem = oldProblem;
+    unit = oldUnit;
+    prevPositions = oldPos;
+    solution = oldSol;
+    numSpawned = oldNumSpawned;
+    score = oldScore;
+    seed = oldSeed;
+    ls_old = oldLs;
+    return q;
+}
+
+
+var lastQuality = Q_INVALID;
+
+function computeMove_opt() {
+    if (!isValidLocation(unit)) {
+        tryMove(STOP);
+        return;
+    }
+    
+    var mvs = [];
+    mvs[DIR_E]    = evalMove(DIR_E);
+    mvs[DIR_W]    = evalMove(DIR_W);
+    mvs[DIR_SE]   = evalMove(DIR_SE);
+    mvs[DIR_SW]   = evalMove(DIR_SW);
+    mvs[ROT_CW]   = evalMove(ROT_CW);
+    mvs[ROT_CCW]  = evalMove(ROT_CCW);
+    mvs[DIR_NW]   = Q_INVALID;
+    mvs[DIR_NE]   = Q_INVALID;
+    
+    var best = DIR_SW;
+    var bestVal = mvs[DIR_SW];
+    for (var i = 0; i < LOCK; i++) {
+        if (mvs[i] < bestVal) {
+            bestVal = mvs[i];
+            best = i;
+        }
+        mvs[i] = mvs[i] | 0; // readability in debug
+    }
+    // alert('Moves: ' + mvs + ', best ' + best + (lastQuality < bestVal ? ', WORSE ' : ', better ') + bestVal + ' <= ' + lastQuality);
+    if (lastQuality < bestVal) {
+        tryMoveX(DIR_SW, true);
+    } else {
+        tryMoveX(best, true);
+        lastQuality = bestVal;
+    }
+}
+
+function computeMove() {
+    computeMove_simple();
+}
+
+
+function redraw() {
+    drawMap();
+    if (unit) {
+        drawUnit();
+    }
+    $('#solution').text(encodeSolution(solution));
+    $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned
+                   + ', Quality: ' + quality());
 }
 
 function humanMove(move) {
@@ -674,10 +775,7 @@ function humanMove(move) {
     }
     else {
         tryUserMove(move);
-        drawMap();
-        drawUnit();
-        $('#solution').text(encodeSolution(solution));
-        $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned);
+        redraw();
     }
 }
 
@@ -743,17 +841,13 @@ $(document).ready(function(){
 
     $('#btn_move').click(function () {
         computeMove();
+        redraw();
     });
     $('#btn_run').click(function () {
-        while (unit != null && numSpawned <= problem.sourceLength) {
+        while (unit && numSpawned <= problem.sourceLength) {
             computeMove();
         }
-        drawMap();
-        if (numSpawned <= problem.sourceLength && unit != null) {
-            drawUnit();
-        }
-        $('#solution').text(encodeSolution(solution));
-        $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned);
+        redraw();
     });
 
     $('#sol').live('change', function (e) {
@@ -761,10 +855,7 @@ $(document).ready(function(){
     });
     $('#btn_simulate').click(function () {
         runSolution();
-        drawMap();
-        drawUnit();
-        $('#solution').text(encodeSolution(solution));
-        $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned);
+        redraw();
     });
     
     sound_move = new Audio('move.wav');
