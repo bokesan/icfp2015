@@ -22,7 +22,7 @@ public class Statistics {
 		this.solutions.addAll(solutions);
 	}
 
-	public void writeStatsFile(String file) {
+	public void writeStatsFile(String file, long duration) {
 		processSolutions();
 		
         PrintWriter writer;
@@ -31,7 +31,7 @@ public class Statistics {
         } catch (FileNotFoundException | UnsupportedEncodingException e) {
                 throw new RuntimeException(e);
         }
-        writer.println(getHeader());
+        writer.println(getHeader(duration));
         writer.println();
         writer.println(getModes());
         writer.println();
@@ -45,8 +45,13 @@ public class Statistics {
 		for (ProblemStats stat : problemstats) {
 			builder.append("problem ").append(String.format("%02d", stat.id)).append(":    ");
 			builder.append(String.format("%05d", stat.points / stat.seeds)).append(" points    ");
+			builder.append(stat.seconds).append(" seconds (").append(String.format("%03d", stat.seconds / stat.seeds)).append(" average)   ");
 			builder.append(String.format("%02d", stat.seeds)).append(" seeds     Solving modes:   ");
-			builder.append(stat.modes);
+			if (stat.modes.size() > 2) {
+				builder.append(stat.modes.size()).append(" different");
+			} else {
+				builder.append(stat.modes);
+			}
 			builder.append("\n");
 		}
 		return builder.toString();
@@ -63,9 +68,10 @@ public class Statistics {
 		return builder.toString();
 	}
 
-	private String getHeader() {
+	private String getHeader(long duration) {
 		StringBuilder builder = new StringBuilder();
 		builder.append(Main.TAG);
+		builder.append("   ").append(Math.ceil(duration / 1000)).append(" seconds");
 		builder.append("   ").append(seeds).append(" seeds in ").append(problemstats.length).append(" problems");
 		builder.append("   ").append(total_points).append(" total points using ").append(modestats.length).append(" modes");
 		return builder.toString();
@@ -97,6 +103,7 @@ public class Statistics {
 			problemstats[prob].seeds += 1;
 			problemstats[prob].modes.add(solution.mode);
 			problemstats[prob].id = solution.id;
+			problemstats[prob].seconds += solution.seconds;
 			
 			int mod = modes.headSet(solution.mode).size();
 			modestats[mod].points += solution.points;
@@ -113,6 +120,7 @@ public class Statistics {
 		int id;
 		int points = 0;
 		int seeds = 0;
+		int seconds = 0;
 		SortedSet<PathFinder.Mode> modes;
 	}
 	

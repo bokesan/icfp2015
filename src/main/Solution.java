@@ -9,4 +9,5 @@ public class Solution {
     public int id;
     public int seed;
     public PathFinder.Mode mode;
+    public int seconds;
 }

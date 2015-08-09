@@ -18,10 +18,11 @@ import java.util.List;
 
 public class Main {
 	
-	public static final String TAG = "power-cap";
+	public static final String TAG = "crazy-modes";
 	private static final boolean DEV_MODE = true;
 
     public static void main(String[] args) throws IOException {
+    	long starttime = System.currentTimeMillis();
     	Statistics stats = new Statistics();
     	//System.out.println("yoyodyne: " + Command.translate("yoyodyne".toLowerCase()));
         Arguments arguments = processArgs(args);
@@ -31,9 +32,12 @@ public class Main {
             JSONObject json = new JSONObject(jsonString);
             int id = json.getInt("id");
             for (SourceStream stream : SourceStream.getSourceStreams(json)) {
+            	long start = System.currentTimeMillis();
                 Boardstate board = new Boardstate(json);
                 Solution solution = new TaskSolver(board, stream, arguments.getPowerWords()).solve();
                 solution.id = id;
+                long time = System.currentTimeMillis() - start;
+                solution.seconds = (int) Math.ceil(time / 1000);
                 solutions.add(solution);
             }
             if (DEV_MODE) stats.add(solutions);
@@ -41,7 +45,8 @@ public class Main {
             if (DEV_MODE) solutions.clear();
         }
         if (!DEV_MODE) createJsonOutput(solutions);
-        if (DEV_MODE) stats.writeStatsFile("results/stats.txt");
+        long duration = System.currentTimeMillis() - starttime;
+        if (DEV_MODE) stats.writeStatsFile("results/stats.txt", duration);
     }
 
     private static void createJsonOutput(List<Solution> solutions) {
