@@ -203,44 +203,65 @@ public class Boardstate {
         return false;
     }
 	
- public List<Command> getLockingMoves(Unit unit, Coordinate position) {
-	 //we do not need to check visited locations, because we only take positions which are invalid, thus we cannot have been there
-	 List<Command> possible = new ArrayList<>();
-     if (!canPlaceUnit(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
-     if (!canPlaceUnit(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
-     if (!canPlaceUnit(position.move(Command.EAST), unit)) possible.add(Command.EAST);
-     if (!canPlaceUnit(position.move(Command.WEST), unit)) possible.add(Command.WEST);
-     if (!canPlaceUnit(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
-     if (!canPlaceUnit(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
-     return possible;
-	}
+    public List<Command> getLockingMoves(Unit unit, Coordinate position) {
+        //we do not need to check visited locations, because we only take positions which are invalid, thus we cannot have been there
+        List<Command> possible = new ArrayList<>();
+        if (!canPlaceUnit(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
+        if (!canPlaceUnit(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
+        if (!canPlaceUnit(position.move(Command.EAST), unit)) possible.add(Command.EAST);
+        if (!canPlaceUnit(position.move(Command.WEST), unit)) possible.add(Command.WEST);
+        if (!canPlaceUnit(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
+        if (!canPlaceUnit(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
+        return possible;
+    }
 
- public List<Command> getFillingMoves(Unit unit, Coordinate position) {
-	 return getFillingMoves(0, unit, position);
+    public List<Command> getFillingMoves(Unit unit, Coordinate position) {
+        return getFillingMoves(0, unit, position);
  	}
  
- public List<Command> getFillingMoves(int depth, Unit unit, Coordinate position) {
-     if (!isValidPosition(unit, position)) {
-         return Collections.emptyList();
-     }
-	 List<Command> possible = new ArrayList<>(6);
-	 if (depth == 0) {
-		 if (doesFillRow(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
-		 if (doesFillRow(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
-		 if (doesFillRow(position.move(Command.EAST), unit)) possible.add(Command.EAST);
-		 if (doesFillRow(position.move(Command.WEST), unit)) possible.add(Command.WEST);
-		 if (doesFillRow(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
-		 if (doesFillRow(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
-	 } else {
-		 if (!getFillingMoves(depth - 1, unit, position.move(Command.SOUTHEAST)).isEmpty()) possible.add(Command.SOUTHEAST);
-		 if (!getFillingMoves(depth - 1, unit, position.move(Command.EAST)).isEmpty()) possible.add(Command.EAST);
-		 if (!getFillingMoves(depth - 1, unit, position.move(Command.SOUTHWEST)).isEmpty()) possible.add(Command.SOUTHWEST);
-		 if (!getFillingMoves(depth - 1, unit, position.move(Command.WEST)).isEmpty()) possible.add(Command.WEST);
-		 if (!getFillingMoves(depth - 1, unit.getRotatedUnit(1), position).isEmpty()) possible.add(Command.CLOCKWISE);
-		 if (!getFillingMoves(depth - 1, unit.getRotatedUnit(5), position).isEmpty()) possible.add(Command.COUNTERCLOCKWISE);
-	 }
-     return possible;
- 	}
+    public List<Command> getFillingMoves(int depth, Unit unit, Coordinate position) {
+        if (!isValidPosition(unit, position)) {
+            return Collections.emptyList();
+        }
+        List<Command> possible = new ArrayList<>(6);
+        if (depth <= 0) {
+            if (doesFillRow(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
+            if (doesFillRow(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
+            if (doesFillRow(position.move(Command.EAST), unit)) possible.add(Command.EAST);
+            if (doesFillRow(position.move(Command.WEST), unit)) possible.add(Command.WEST);
+            if (doesFillRow(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
+            if (doesFillRow(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
+        } else {
+            if (hasFillingMoves(depth - 1, unit, position.move(Command.SOUTHEAST))) possible.add(Command.SOUTHEAST);
+            if (hasFillingMoves(depth - 1, unit, position.move(Command.EAST))) possible.add(Command.EAST);
+            if (hasFillingMoves(depth - 1, unit, position.move(Command.SOUTHWEST))) possible.add(Command.SOUTHWEST);
+            if (hasFillingMoves(depth - 1, unit, position.move(Command.WEST))) possible.add(Command.WEST);
+            if (hasFillingMoves(depth - 1, unit.getRotatedUnit(1), position)) possible.add(Command.CLOCKWISE);
+            if (hasFillingMoves(depth - 1, unit.getRotatedUnit(5), position)) possible.add(Command.COUNTERCLOCKWISE);
+        }
+        return possible;
+    }
+    
+    private boolean hasFillingMoves(int depth, Unit unit, Coordinate position) {
+        if (!isValidPosition(unit, position)) {
+            return false;
+        }
+        if (depth <= 0) {
+            return ((doesFillRow(position.move(Command.SOUTHEAST), unit)) ||
+                    (doesFillRow(position.move(Command.SOUTHWEST), unit)) ||
+                    (doesFillRow(position.move(Command.EAST), unit)) ||
+                    (doesFillRow(position.move(Command.WEST), unit)) ||
+                    (doesFillRow(position, unit.getRotatedUnit(1))) ||
+                    (doesFillRow(position, unit.getRotatedUnit(5))));
+        } else {
+            return ((hasFillingMoves(depth - 1, unit, position.move(Command.SOUTHEAST))) ||
+                    (hasFillingMoves(depth - 1, unit, position.move(Command.SOUTHWEST))) ||
+                    (hasFillingMoves(depth - 1, unit, position.move(Command.EAST))) ||
+                    (hasFillingMoves(depth - 1, unit, position.move(Command.WEST))) ||
+                    (hasFillingMoves(depth - 1, unit.getRotatedUnit(1), position)) ||
+                    (hasFillingMoves(depth - 1, unit.getRotatedUnit(5), position)));
+        }
+    }
 
     private boolean isValidPosition(List<Coordinate> members) {
         for (Coordinate c : members) {
