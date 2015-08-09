@@ -98,8 +98,17 @@ public class Boardstate {
     }
 
     public boolean canPlaceUnit(Coordinate pivotPoint, Unit unit, List<VisitedState> visited) {
-        if (visited.contains(new VisitedState(pivotPoint, unit))) return false;
+        if (visitedContains(visited, pivotPoint, unit)) return false;
         return isValidPosition(unit, pivotPoint);
+    }
+    
+    private static boolean visitedContains(List<VisitedState> visited, Coordinate c, Unit u) {
+        for (VisitedState st : visited) {
+            if (st.position.equals(c) && st.unit.equals(u)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isOutside(Coordinate coordinate) {
@@ -158,7 +167,7 @@ public class Boardstate {
     }
 
     public List<Command> getNonLockingMoves(Unit unit, Coordinate position, List<VisitedState> visited) {
-        List<Command> possible = new ArrayList<>();
+        List<Command> possible = new ArrayList<>(6);
         if (canPlaceUnit(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
         if (canPlaceUnit(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
         if (canPlaceUnit(position.move(Command.EAST), unit, visited)) possible.add(Command.EAST);
@@ -205,7 +214,7 @@ public class Boardstate {
 	
     public List<Command> getLockingMoves(Unit unit, Coordinate position) {
         //we do not need to check visited locations, because we only take positions which are invalid, thus we cannot have been there
-        List<Command> possible = new ArrayList<>();
+        List<Command> possible = new ArrayList<>(6);
         if (!canPlaceUnit(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
         if (!canPlaceUnit(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
         if (!canPlaceUnit(position.move(Command.EAST), unit)) possible.add(Command.EAST);
