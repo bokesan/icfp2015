@@ -34,6 +34,13 @@ public class Unit {
         return 59 * pivot.hashCode() + members.hashCode();
     }
     
+    /**
+     * Number of members.
+     */
+    public int size() {
+        return members.size();
+    }
+    
     public String toString() {
     	StringBuilder output = new StringBuilder();
     	output.append("pivot: ").append(pivot.x).append("/").append(pivot.y);
