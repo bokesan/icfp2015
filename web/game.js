@@ -20,6 +20,12 @@ const ROT_CCW = 7;
 const LOCK    = 8;
 const STOP    = 9;
 
+// quality
+const Q_DEPTH_FACTOR = 100;
+const Q_COVERED = 30;
+const Q_PART_COVERED = 10;
+
+
 var size = 42;
 
 var problem = {};
@@ -69,18 +75,25 @@ function nextRandom() {
 
 // =====
 
-function isFilled(col,row) {
-    var i;
-    var cell;
+function isOnBoard(c) {
+    return (c.x >= 0 && c.x < problem.width &&
+            c.y >= 0 && c.y < problem.height);
+}
+
+
+function isFilled(c) {
     var f = problem.filled;
     var n = f.length;
-    for (i = 0; i < n; i++) {
-        cell = f[i];
-        if (cell.x === col && cell.y === row) {
+    for (var i = 0; i < n; i++) {
+        if (cellEquals(f[i], c)) {
             return true;
         }
     }
     return false;
+}
+
+function isFilledOrOff(c) {
+    return isFilled(c) || !isOnBoard(c);
 }
 
 function cellEquals(a, b) {
@@ -130,10 +143,7 @@ function isValidLocation(unit) {
     var i;
     var n = unit.members.length;
     for (i = 0; i < n; i++) {
-        var c = unit.members[i];
-        if (c.x < 0 || c.y < 0 || c.x >= problem.width || c.y >= problem.height
-            || isFilled(c.x, c.y))
-        {
+        if (isFilledOrOff(unit.members[i])) {
             return false;
         }
     }
@@ -153,30 +163,64 @@ function atBottom(unit) {
 }
 
 function rowFull(row) {
-    var col;
-    for (col = 0; col < problem.width; col++) {
-        if (!isFilled(col,row)) {
-            return false;
+    var numCells = 0;
+    problem.filled.forEach(function (c) {
+        if (c.y === row) {
+            numCells++;
         }
-    }
-    return true;
+    });
+    return numCells === problem.width;
 }
 
 function clearRow(row) {
     var n = [];
-    var i;
-    for (i = 0; i < problem.filled.length; i++) {
-        if (problem.filled[i].y !== row) {
-            n.push(problem.filled[i]);
+    problem.filled.forEach(function (cell) {
+        if (cell.y > row) {
+            n.push(cell);
+        }
+        else if (cell.y < row) {
+            n.push({x: cell.x, y: cell.y + 1});
+        }
+        // and don't push if === row
+    });
+    problem.filled = n;
+}
+
+function topmost_row_used() {
+    var top = problem.height;
+    problem.filled.forEach(function (cell) { top = Math.min(top, cell.y); });
+    return top;
+}
+
+function cover_badness(c) {
+    var nw = isFilledOrOff(moveCell(c, DIR_NW));
+    var ne = isFilledOrOff(moveCell(c, DIR_NE));
+    if (nw) {
+        return ne ? Q_COVERED : Q_PART_COVERED;
+    } else {
+        return ne ? Q_PART_COVERED : 0;
+    }
+}
+
+// evaluate quality of current board position
+// lower is better
+function quality() {
+    var row, col, cell;
+    var q = 0;
+    // "low" is good
+    q += 100 * (problem.height - topmost_row_used());
+    // holes are bad
+    for (row = 1; row < problem.height; row++) {
+        for (col = 0; col < problem.width; col++) {
+            cell = {x: col, y: row};
+            if (!isFilled(cell)) {
+                q += cover_badness(cell);
+            }
         }
     }
-    problem.filled = n.map(function(cell) {
-        if (cell.y < row) {
-            return { x: cell.x, y: cell.y + 1 };
-        }
-        return cell;
-    });
+    return q;
 }
+
 
 
 // unit dimensions
@@ -193,14 +237,6 @@ function unitDimensions(unit) {
     });
     return { min_x: min_x, max_x: max_x,
              min_y: min_y, max_y: max_y };
-}
-
-function unitRowWeight(unit) {
-    var sum = 0;
-    unit.members.forEach(function (cell) {
-        sum += cell.y;
-    });
-    return sum;
 }
 
 
@@ -263,14 +299,14 @@ function loadSolution(f) {
 }
 
 
-function showCoord(col, row) {
-    return col.toString() + ',' + row;
+function showCoord(cell) {
+    return cell.x.toString() + ',' + cell.y;
 }
 
 function parseCoord(s) {
-  var col = s.charCodeAt(0) - 64;
-  var row = parseInt(s.substring(1));
-  return [col, row];
+    var col = s.charCodeAt(0) - 64;
+    var row = parseInt(s.substring(1));
+    return {x:col, y:row};
 }
 
 
@@ -304,15 +340,14 @@ function drawPivot(ctx) {
   ctx.restore();
 }
 
-function baseCoord(col,row) {
-  var xoff = size * Math.sqrt(3) / 2;
-  var yoff = 0.75 * size;
-  var x = -5;
-  // row = mapHeight - row;
-  if (row & 1) {
-    x += xoff / 2;
-  }
-  return [x + col * xoff, row * yoff];
+function baseCoord(c) {
+    var xoff = size * Math.sqrt(3) / 2;
+    var yoff = 0.75 * size;
+    var x = -5;
+    if (c.y & 1) {
+        x += xoff / 2;
+    }
+    return {x: x + c.x * xoff, y: c.y * yoff};
 }
 
 function mapToCell(x, y) {
@@ -337,7 +372,7 @@ function drawMap() {
     m.height = yoff * (height + 0.333);
     var c = m.getContext('2d');
     var row, col, w;
-    var xy;
+    var xy, cell;
 
     c.fillStyle = MAP_BACKGROUND_COLOR;
     c.fillRect(0, 0, m.width, m.height);
@@ -346,21 +381,23 @@ function drawMap() {
     c.save();
     for (row = 0; row < height; row++) {
         for (col = 0; col < width; col++) {
-            if (isFilled(col,row)) {
+            cell = {x:col,y:row};
+            if (isFilled(cell)) {
                 c.fillStyle = FILLED_COLOR;
             } else {
                 c.fillStyle = MAP_COLOR;
             }
-            xy = baseCoord(col,row);
+            xy = baseCoord(cell);
             c.save();
-            c.translate(xy[0],xy[1]);
+            c.translate(xy.x,xy.y);
             drawHex(c);
-            c.strokeText(showCoord(col, row), xoff * 0.5, size / 2);
+            if (size >= 40) {
+                c.strokeText(showCoord(cell), xoff * 0.5, size / 2);
+            }
             c.restore();
         }
     }
     c.restore();
-    // $("#msg").text("-");
 }
 
 function drawUnit() {
@@ -373,21 +410,20 @@ function drawUnit() {
     c.strokeStyle = 'black';
     c.save();
     unit.members.forEach(function (cell) {
-        var xy = baseCoord(cell.x, cell.y);
+        var xy = baseCoord(cell);
         c.save();
-        if (isFilled(cell.x,cell.y)) {
+        if (isFilled(cell)) {
             c.fillStyle = UNIT_OVERLAP_COLOR;
         }
-        c.translate(xy[0], xy[1]);
+        c.translate(xy.x, xy.y);
         drawHex(c);
         c.restore();
     });
-    var px = unit.pivot.x;
-    var py = unit.pivot.y;
-    if (px >= 0 && px < problem.width && py >= 0 && py < problem.height) {
-        var xy = baseCoord(px, py);
+
+    if (isOnBoard(unit.pivot)) {
+        var xy = baseCoord(unit.pivot);
         c.save();
-        c.translate(xy[0], xy[1]);
+        c.translate(xy.x, xy.y);
         drawPivot(c);
         c.restore();
     }
@@ -510,6 +546,19 @@ function nextUnit() {
 
 var solution = [];
 
+var WORDS = [["ei!", "243"],
+             ["ia! ia!", "4435443"],
+             ["r'lyeh", "135224"],
+             ["yuggoth", "2k445k4"]
+            ]; 
+
+function chant(s, words) {
+    words.forEach(function (w) {
+        s = s.replace(new RegExp(w[1], 'g'), w[0]);
+    });
+    return s;
+}
+
 function encodeSolution(s) {
     var r = '';
     s.forEach(function (move) {
@@ -527,7 +576,7 @@ function encodeSolution(s) {
             r += c;
         }
     });
-    return r;
+    return chant(r, WORDS);
 }
 
 function executeMove(move, newUnit) {
