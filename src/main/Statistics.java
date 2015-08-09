@@ -5,7 +5,6 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -33,9 +32,9 @@ public class Statistics {
         }
         writer.println(getHeader(duration));
         writer.println();
-        writer.println(getModes());
-        writer.println();
         writer.println(getProbs());
+        writer.println();
+        writer.println(getModes());
         writer.println();
         writer.close();
 	}
@@ -45,7 +44,7 @@ public class Statistics {
 		for (ProblemStats stat : problemstats) {
 			builder.append("problem ").append(String.format("%02d", stat.id)).append(":    ");
 			builder.append(String.format("%05d", stat.points / stat.seeds)).append(" points    ");
-			builder.append(stat.seconds).append(" seconds (").append(String.format("%03d", stat.seconds / stat.seeds)).append(" average)   ");
+			builder.append(String.format("%03d", stat.seconds)).append(" seconds (").append(String.format("%03d", stat.seconds / stat.seeds)).append(" average)   ");
 			builder.append(String.format("%02d", stat.seeds)).append(" seeds     Solving modes:   ");
 			if (stat.modes.size() > 2) {
 				builder.append(stat.modes.size()).append(" different");

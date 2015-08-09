@@ -18,13 +18,13 @@ import java.util.List;
 
 public class Main {
 	
-	public static final String TAG = "crazy-modes";
+	public static final String TAG = "evolve-word-ahead";
 	private static final boolean DEV_MODE = true;
 
     public static void main(String[] args) throws IOException {
     	long starttime = System.currentTimeMillis();
     	Statistics stats = new Statistics();
-    	//System.out.println("yoyodyne: " + Command.translate("yoyodyne".toLowerCase()));
+    	//System.out.println("conway.: " + commands.Command.translate("conway.".toLowerCase()));
         Arguments arguments = processArgs(args);
         List<Solution> solutions = new ArrayList<>();
         for (String fileString : arguments.getFiles()) {

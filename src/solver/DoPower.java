@@ -24,22 +24,26 @@ public class DoPower {
 		this.board = board; this. commands = commands; this. visited = visited; this.position = position; this.currentUnit = currentUnit; this.rotation = rotation;
 	}
 
-	public boolean doIfPossible(String string) {
+	public boolean doIfPossible(String string, int lookahead) {
 		List<Command> commands = Command.translate(string);
 		boolean possible = canPerform(commands);
-		if (possible) doPerform(commands);
+		if (possible)  {
+		    doPerform(commands);
+		} else if (lookahead > 0) {
+		    for (Command command : board.getNonLockingMoves(currentUnit, position, visited)) {
+		        if (doIfPossible(string, lookahead - 1)) return true;
+		    }
+		}
 		return possible;
 	}
 
 	private boolean canPerform(List<Command> commands) {
 		Unit testUnit = currentUnit;
 		Coordinate testPosition = position;
-		int testRotation = rotation;
 		List<VisitedState> testVisited = new ArrayList<>(visited);
 		for (Command command : commands) {
 			testUnit = applyCommand(command, testUnit);
 			testPosition = applyCommand(command, testPosition);
-			testRotation = applyCommand(command, rotation);
 			if (!board.canPlaceUnit(testPosition, testUnit, testVisited)) return false;
 			testVisited.add(new VisitedState(testPosition, testUnit));
 		}
