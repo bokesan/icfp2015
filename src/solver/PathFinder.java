@@ -14,10 +14,12 @@ import java.util.List;
 public class PathFinder {
 
     public enum Mode {
-    	CHRIS_PATH,
+    	CHRIS_PATH, POWER_NO_WORDS,
     	FILL_ROWS_1, FILL_ROWS_2, FILL_ROWS_3, FILL_ROWS_4,
     	WITH_ALL_POWER, WITH_ALL_POWER_1, WITH_ALL_POWER_2, WITH_ALL_POWER_3,
-    	EACH_WORD_ONCE, EACH_WORD_ONCE_1, EACH_WORD_ONCE_2, EACH_WORD_ONCE_3;
+    	EACH_WORD_ONCE, EACH_WORD_ONCE_1, EACH_WORD_ONCE_2, EACH_WORD_ONCE_3,
+    	WAP_CAP_3, WAP_CAP_7, WAP_CAP_10,
+    	EWO_CAP_3, EWO_CAP_7, EWO_CAP_10;
     	
     	public String toString() { return name(); }
     }
@@ -39,24 +41,32 @@ public class PathFinder {
     //todo extract strategy methods, de-duplicate code
     public PathResult findPath(Mode mode) {
         switch (mode) {
-            case CHRIS_PATH: return chrisPath();
-            case FILL_ROWS_1: return fillRows(1);
-            case FILL_ROWS_2: return fillRows(2);
-            case FILL_ROWS_3: return fillRows(3);
-            case FILL_ROWS_4: return fillRows(4);
-            case WITH_ALL_POWER: return withPower(0);
-            case WITH_ALL_POWER_1: return withPower(1);
-            case WITH_ALL_POWER_2: return withPower(2);
-            case WITH_ALL_POWER_3: return withPower(3);
-            case EACH_WORD_ONCE:	return eachWordOnce(0);
-            case EACH_WORD_ONCE_1:	return eachWordOnce(1);
-            case EACH_WORD_ONCE_2:	return eachWordOnce(2);
-            case EACH_WORD_ONCE_3:	return eachWordOnce(3);
+            case CHRIS_PATH: 		return chrisPath();
+            case POWER_NO_WORDS:	return withPower(0, 0);
+            case FILL_ROWS_1: 		return fillRows(1);
+            case FILL_ROWS_2: 		return fillRows(2);
+            case FILL_ROWS_3: 		return fillRows(3);
+            case FILL_ROWS_4: 		return fillRows(4);
+            case WITH_ALL_POWER: 	return withPower(0, -1);
+            case WITH_ALL_POWER_1: 	return withPower(1, -1);
+            case WITH_ALL_POWER_2: 	return withPower(2, -1);
+            case WITH_ALL_POWER_3: 	return withPower(3, -1);
+            case EACH_WORD_ONCE:	return eachWordOnce(0, -1);
+            case EACH_WORD_ONCE_1:	return eachWordOnce(1, -1);
+            case EACH_WORD_ONCE_2:	return eachWordOnce(2, -1);
+            case EACH_WORD_ONCE_3:	return eachWordOnce(3, -1);
+            case WAP_CAP_3:			return withPower(0, 3);
+            case WAP_CAP_7:			return withPower(0, 7);
+            case WAP_CAP_10:		return withPower(0, 10);
+            case EWO_CAP_3:			return eachWordOnce(0, 3);
+            case EWO_CAP_7:			return eachWordOnce(0, 7);
+            case EWO_CAP_10:		return eachWordOnce(0, 10);
             default:    throw new IllegalArgumentException("Illegal Mode");
         }
     }
     
-    private PathResult eachWordOnce(int depth) {
+    private PathResult eachWordOnce(int depth, int maxWordLength) {
+    	filterWords(maxWordLength);
     	List<VisitedState> visited = new ArrayList<>();
         Unit currentUnit = unit;
         int rotation = 0;
@@ -153,7 +163,8 @@ public class PathFinder {
         return result;
 	}
     
-    private PathResult withPower(int depth) {
+    private PathResult withPower(int depth, int maxWordLength) {
+    	filterWords(maxWordLength);
     	List<VisitedState> visited = new ArrayList<>();
         Unit currentUnit = unit;
         int rotation = 0;
@@ -245,6 +256,18 @@ public class PathFinder {
         result.unitPlace = position;
         result.commands = new CommandBranch(commands);
         return result;
+	}
+
+	private void filterWords(int maxWordLength) {
+		if (maxWordLength < 0) return;
+		List<String> allowed = new ArrayList<>(powerWords);
+		for (String word : powerWords) {
+			if (word.length() > maxWordLength) {
+				allowed.remove(word);
+				unusedWords.remove(word);
+			}
+		}
+		powerWords = allowed;
 	}
 
 	private Command checkForWords(List<Command> lockMoves, CommandSequence commands) {

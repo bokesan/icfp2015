@@ -18,7 +18,7 @@ import java.util.List;
 
 public class Main {
 	
-	public static final String TAG = "words-stats";
+	public static final String TAG = "power-cap";
 	private static final boolean DEV_MODE = true;
 
     public static void main(String[] args) throws IOException {

@@ -1,15 +1,14 @@
 package solver;
 
-import commands.Command;
-import commands.CommandPathOptions;
-import commands.CommandSequence;
 import main.Boardstate;
 import main.Solution;
-import solver.TaskSolver.TaskSolution;
 import units.SourceStream;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import commands.CommandPathOptions;
 
 
 public class TaskSolver {
@@ -25,19 +24,7 @@ public class TaskSolver {
     }
     
     private List<PathFinder.Mode> getModes() {
-    	List<PathFinder.Mode> modes = new ArrayList<>();
-    	modes.add(PathFinder.Mode.CHRIS_PATH);
-    	modes.add(PathFinder.Mode.FILL_ROWS_1);
-    	modes.add(PathFinder.Mode.FILL_ROWS_2);
-    	modes.add(PathFinder.Mode.FILL_ROWS_3);
-    	modes.add(PathFinder.Mode.FILL_ROWS_4);
-    	modes.add(PathFinder.Mode.WITH_ALL_POWER);
-    	modes.add(PathFinder.Mode.WITH_ALL_POWER_1);
-    	modes.add(PathFinder.Mode.WITH_ALL_POWER_2);
-    	modes.add(PathFinder.Mode.EACH_WORD_ONCE);
-    	modes.add(PathFinder.Mode.EACH_WORD_ONCE_1);
-    	modes.add(PathFinder.Mode.EACH_WORD_ONCE_2);
-    	return modes;
+    	return Arrays.asList(PathFinder.Mode.values());
     }
 
     public Solution solve() {
