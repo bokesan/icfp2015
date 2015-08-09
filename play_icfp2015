@@ -1,27 +1,25 @@
-#!/bin/sh
+#!/bin/bash
 
-prog_args="$*"
-megabytes="1024"
-
-while [[ $# > 1 ]]
-do
-    key="$1"
-    case $key in
-        -m)
-            megabytes="$2"
-            shift
-            ;;
-        *)
-            # other
-            ;;
-    esac
-    shift
+# extract memory arg to pass to JVM
+megabytes=1024
+for arg ; do
+    if [ "$megabytes" = X ]; then
+        megabytes=$arg
+        break
+    fi
+    if [ "$arg" = "-m" ]; then
+        megabytes=X
+    fi
 done
+if [ "$megabytes" = X ]; then
+    megabytes=1024
+fi
 
+# add all jar files in lib to classpath
 THE_CLASSPATH=dist/icfp2015.jar
 for i in `ls ./lib/*.jar`
 do
   THE_CLASSPATH=${THE_CLASSPATH}:${i}
 done
 
-java -Xmx${megabytes}m -cp ${THE_CLASSPATH} main/Main $prog_args
+java -Xmx${megabytes}m -cp ${THE_CLASSPATH} main/Main "$@"
