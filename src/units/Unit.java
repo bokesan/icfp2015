@@ -18,7 +18,6 @@ public class Unit {
 
     @Override
     public boolean equals(Object object) {
-
         if (object != null && object instanceof Unit) {
             Unit unit = (Unit) object;
             if (!pivot.equals(unit.pivot)) return false;
@@ -53,9 +52,10 @@ public class Unit {
     public Unit(JSONObject json) {
         JSONObject pivotJson = json.getJSONObject("pivot");
         this.pivot = new Coordinate(pivotJson.getInt("x"), pivotJson.getInt("y"));
-        this.members = new ArrayList<>();
         JSONArray memberJson = json.getJSONArray("members");
-        for (int i = 0; i < memberJson.length(); i++) {
+        int numMembers = memberJson.length(); 
+        this.members = new ArrayList<>(numMembers);
+        for (int i = 0; i < numMembers; i++) {
             JSONObject member = memberJson.getJSONObject(i);
             this.members.add(new Coordinate(member.getInt("x"), member.getInt("y")));
         }
@@ -84,8 +84,9 @@ public class Unit {
     }
 
     public static List<Unit> fromJson(JSONArray jsonUnits) {
-        List<Unit> units = new ArrayList<>();
-        for (int i = 0; i < jsonUnits.length(); i++) {
+        int n = jsonUnits.length();
+        List<Unit> units = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
             JSONObject unit = jsonUnits.getJSONObject(i);
             units.add(new Unit(unit));
         }
@@ -96,15 +97,11 @@ public class Unit {
         return pivot;
     }
 
-    public List<Coordinate> getMembers() {
-        return new ArrayList<>(members);
-    }
-
     public Coordinate getSpawnPoint(int boardWidth) {
         int yOffset = dimension.minY;
         int unitWidth = 1 + dimension.maxX - dimension.minX;
         int space = boardWidth - unitWidth;
-        int xOffset = (int) Math.floor(space / 2) - dimension.minX;
+        int xOffset = space / 2 - dimension.minX;
         return new Coordinate(pivot.x + xOffset, pivot.y + yOffset);
     }
 
@@ -113,21 +110,25 @@ public class Unit {
         int yOffset = pivotPoint.y - pivot.y;
         int xOffset = pivotPoint.x - pivot.x;
         List<Coordinate> newCoordinates = new ArrayList<>(members.size());
-        for (Coordinate old : members) {
-            if ((pivotPoint.y & 1) == (pivot.y & 1)) {
-                //moving from odd to odd row or from even to even row
+        if ((pivotPoint.y & 1) == (pivot.y & 1)) {
+            // moving from odd to odd row or from even to even row
+            for (Coordinate old : members) {
                 newCoordinates.add(new Coordinate(old.x + xOffset, old.y + yOffset));
-            } else if ((pivotPoint.y & 1) == 0) {
-                //moving from odd to even row
-                //subtract 1 from x offset in formerly even rows
+            }
+        } else if ((pivotPoint.y & 1) == 0) {
+            // moving from odd to even row
+            // subtract 1 from x offset in formerly even rows
+            for (Coordinate old : members) {
                 if ((old.y & 1) == 0) {
                     newCoordinates.add(new Coordinate(old.x + xOffset - 1, old.y + yOffset));
                 } else {
                     newCoordinates.add(new Coordinate(old.x + xOffset, old.y + yOffset));
                 }
-            } else {
-                //moving from even to odd row
-                //add one to x offset in formerly odd rows
+            }
+        } else {
+            // moving from even to odd row
+            // add one to x offset in formerly odd rows
+            for (Coordinate old : members) {
                 if ((old.y & 1) == 0) {
                     newCoordinates.add(new Coordinate(old.x + xOffset, old.y + yOffset));
                 } else {
@@ -166,7 +167,7 @@ public class Unit {
         }
     }
 
-    
+    // cache rotations
     private final Map<Integer, Unit> rotations = new HashMap<>();
     
     public Unit getRotatedUnit(int rotations) {
