@@ -115,7 +115,7 @@ public class Boardstate {
         }
         int linesCleared = clearFullLines();
         points += 50 * (1 + linesCleared) * linesCleared;
-        if (linesClearedOld > 1) points += Math.floor((linesClearedOld - 1) * points / 10);
+        if (linesClearedOld > 1) points += Math.floor((linesClearedOld - 1) * points / 10.0);
         linesClearedOld = linesCleared;
         return points;
     }
