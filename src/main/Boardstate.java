@@ -11,6 +11,7 @@ import units.Unit;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -56,6 +57,11 @@ public class Boardstate {
         return filled;
     }
 
+    /**
+     * Cell filled?
+     * <p>
+     * <b>Caution:</b> throws Exception when coordinated out of board.
+     */
     public boolean isFilled(int x, int y) {
         return filled[cellIndex(x,y)];
     }
@@ -88,17 +94,12 @@ public class Boardstate {
     }
 
     public boolean canPlaceUnit(Coordinate pivotPoint, Unit unit) {
-        return canPlaceUnit(pivotPoint, unit, new ArrayList<VisitedState>());
+        return isValidPosition(unit, pivotPoint);
     }
 
     public boolean canPlaceUnit(Coordinate pivotPoint, Unit unit, List<VisitedState> visited) {
         if (visited.contains(new VisitedState(pivotPoint, unit))) return false;
-        List<Coordinate> coordinates = unit.getAbsoluteMembers(pivotPoint);
-        for (Coordinate coordinate : coordinates) {
-            if (isOutside(coordinate)) return false;
-            if (isFilled(coordinate)) return false;
-        }
-        return true;
+        return isValidPosition(unit, pivotPoint);
     }
 
     private boolean isOutside(Coordinate coordinate) {
@@ -174,9 +175,8 @@ public class Boardstate {
 
     public boolean doesFillRow(Coordinate position, Unit currentUnit) {
         List<Coordinate> coordinates = currentUnit.getAbsoluteMembers(position);
-        for (Coordinate coordinate : coordinates) {
-            if (isOutside(coordinate)) return false;
-            if (isFilled(coordinate)) return false;
+        if (!isValidPosition(coordinates)) {
+            return false;
         }
         for (Coordinate coordinate : coordinates) {
             boolean full = true;
@@ -220,6 +220,9 @@ public class Boardstate {
  	}
  
  public List<Command> getFillingMoves(int depth, Unit unit, Coordinate position) {
+     if (!isValidPosition(unit, position)) {
+         return Collections.emptyList();
+     }
 	 List<Command> possible = new ArrayList<>(6);
 	 if (depth == 0) {
 		 if (doesFillRow(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
@@ -238,4 +241,17 @@ public class Boardstate {
 	 }
      return possible;
  	}
+
+    private boolean isValidPosition(List<Coordinate> members) {
+        for (Coordinate c : members) {
+            if (isOutside(c) || isFilled(c)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean isValidPosition(Unit unit, Coordinate position) {
+        return isValidPosition(unit.getAbsoluteMembers(position));
+    }
  }
