@@ -1,20 +1,12 @@
 "use strict";
 
+// colors
 const MAP_COLOR            = '#ffffe8';
 const MAP_BACKGROUND_COLOR = '#ffffff';
 const FILLED_COLOR         = '#f0f040';
 const UNIT_COLOR           = '#ffb000';
 const UNIT_OVERLAP_COLOR   = '#ff6000';
 const PIVOT_COLOR          = '#209010';
-
-var size = 42;
-
-var problem = {};
-
-var unit;
-var prevPositions = [];
-var numSpawned = 0;
-var score = 0;
 
 // directions and moves
 const DIR_E   = 0;
@@ -28,9 +20,15 @@ const ROT_CCW = 7;
 const LOCK    = 8;
 const STOP    = 9;
 
-//                E,     SE,     SW,      W,        NW,       NE
-const OFFS =  [  [ 1, 0,  0, 1,   -1, 1,   -1, 0,    -1, -1,   0, -1 ],   // even row
-                 [ 1, 0,  1, 1,   0, 1,    -1, 0,    0, -1,    1, -1 ] ]; // odd row
+var size = 42;
+
+var problem = {};
+
+var unit;
+var prevPositions = [];
+var numSpawned = 0;
+var score = 0;
+
 
 // ===== Sounds =====
 
@@ -419,6 +417,11 @@ function translateCell(cell, x, y) {
     return { x: cell.x + x, y: cell.y + y };
 }
 
+
+//                E,     SE,     SW,      W,        NW,       NE
+const OFFS =  [  [ 1, 0,  0, 1,   -1, 1,   -1, 0,    -1, -1,   0, -1 ],   // even row
+                 [ 1, 0,  1, 1,   0, 1,    -1, 0,    0, -1,    1, -1 ] ]; // odd row
+
 function moveCell(cell, direction) {
     var offs = OFFS[cell.y & 1];
     var d = 2 * direction;
@@ -609,10 +612,10 @@ function computeMove() {
         tryMove(DIR_SW) || tryMove(DIR_SE) || tryMove(DIR_W) || tryMove(DIR_E)
           || tryMove(ROT_CW) || tryMove(ROT_CCW)
           || tryMove(LOCK);
-        drawMap();
-        drawUnit();
-        $('#solution').text(encodeSolution(solution));
-        $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned);
+        // drawMap();
+        // drawUnit();
+        // $('#solution').text(encodeSolution(solution));
+        // $('#msg').text('Score: ' + score + ', spawned: ' + numSpawned);
     }
 }
 
