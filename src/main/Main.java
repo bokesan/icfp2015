@@ -4,7 +4,6 @@ package main;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import commands.Command;
 import solver.TaskSolver;
 import units.SourceStream;
 
@@ -19,12 +18,12 @@ import java.util.List;
 
 public class Main {
 	
-	private static final String TAG = "long-power";
+	public static final String TAG = "words-stats";
 	private static final boolean DEV_MODE = true;
 
     public static void main(String[] args) throws IOException {
     	Statistics stats = new Statistics();
-    	//System.out.println("davar: " + Command.translate("davar".toLowerCase()));
+    	//System.out.println("yoyodyne: " + Command.translate("yoyodyne".toLowerCase()));
         Arguments arguments = processArgs(args);
         List<Solution> solutions = new ArrayList<>();
         for (String fileString : arguments.getFiles()) {
@@ -57,7 +56,7 @@ public class Main {
             combined.put(output);
             points += solution.points;
         }
-        String file = solutions.get(0).id + "_" + "_" + TAG;
+        String file = solutions.get(0).id + "_" + TAG;
         if (DEV_MODE) writeOutputFile(combined.toString(), file);
         if (!DEV_MODE) System.out.println(combined.toString());
     }

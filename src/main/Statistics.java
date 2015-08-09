@@ -1,8 +1,12 @@
 package main;
 
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeSet;
 
 import solver.PathFinder;
@@ -10,31 +14,113 @@ import solver.PathFinder;
 public class Statistics {
 	
 	private List<Solution> solutions = new ArrayList<>();
-	int problems, seeds, total_points, used_modes = 0;
+	int seeds, total_points = 0;
 	ProblemStats[] problemstats;
+	ModeStats[] modestats;
 
 	public void add(List<Solution> solutions) {
 		this.solutions.addAll(solutions);
 	}
 
-	public void writeStatsFile(String string) {
+	public void writeStatsFile(String file) {
 		processSolutions();
 		
+        PrintWriter writer;
+        try {
+            writer = new PrintWriter(file, "UTF-8");
+        } catch (FileNotFoundException | UnsupportedEncodingException e) {
+                throw new RuntimeException(e);
+        }
+        writer.println(getHeader());
+        writer.println();
+        writer.println(getModes());
+        writer.println();
+        writer.println(getProbs());
+        writer.println();
+        writer.close();
+	}
+
+	private String getProbs() {
+		StringBuilder builder = new StringBuilder();
+		for (ProblemStats stat : problemstats) {
+			builder.append("problem ").append(String.format("%02d", stat.id)).append(":   ");
+			builder.append(String.format("%02d", stat.seeds)).append("seeds with ");
+			builder.append(String.format("%05d", stat.points / stat.seeds)).append(" average points. Solving mode:   ");
+			builder.append(stat.mode.name());
+			builder.append("\n");
+		}
+		return builder.toString();
+	}
+
+	private String getModes() {
+		StringBuilder builder = new StringBuilder();
+		for (ModeStats stat : modestats) {
+			builder.append(stat.mode.name()).append(":   ");
+			builder.append(stat.wins).append("wins and ");
+			builder.append(stat.points / stat.used).append(" average points");
+			builder.append("\n");
+		}
+		return builder.toString();
+	}
+
+	private String getHeader() {
+		StringBuilder builder = new StringBuilder();
+		builder.append(Main.TAG);
+		builder.append("   ").append(seeds).append(" seeds in ").append(problemstats.length).append(" problems");
+		builder.append("   ").append(total_points).append(" total points using ").append(modestats.length).append(" modes");
+		return builder.toString();
 	}
 
 	private void processSolutions() {
-		Set<Integer> problems = new TreeSet<Integer>();
-		List<PathFinder.Mode> modes = new ArrayList<>();
+		SortedSet<Integer> problems = new TreeSet<>();
+		SortedSet<PathFinder.Mode> modes = new TreeSet<>();
 		for (Solution solution : solutions) {
 			problems.add(solution.id);
+			modes.add(solution.mode);
 			seeds++;
 			total_points += solution.points;
+		}
+		
+		problemstats = new ProblemStats[problems.size()];
+		modestats = new ModeStats[modes.size()];
+		for (int i = 0; i < problemstats.length; i++) {
+			problemstats[i] = new ProblemStats();
+		}
+		for (int i = 0; i < modestats.length; i++) {
+			modestats[i] = new ModeStats();
+		}
+		
+		for (Solution solution : solutions) {
+			int prob = problems.headSet(solution.id).size();
+			problemstats[prob].points += solution.points;
+			problemstats[prob].seeds += 1;
+			problemstats[prob].mode = solution.mode;
+			problemstats[prob].id = solution.id;
+			
+			int mod = modes.headSet(solution.mode).size();
+			modestats[mod].points += solution.points;
+			modestats[mod].wins += 1;
+			modestats[mod].used += 1;
+			modestats[mod].mode = solution.mode;
+			
+			//todo evaluate all the subsolutions which did not win, once they get along in the solution
 		}
 		
 	}
 	
 	private class ProblemStats {
-		
+		int id;
+		int points = 0;
+		int seeds = 0;
+		PathFinder.Mode mode;
 	}
+	
+	private class ModeStats {
+		PathFinder.Mode mode;
+		int wins = 0;
+		int used = 0;
+		int points = 0;
+	}
+
 
 }

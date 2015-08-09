@@ -145,7 +145,7 @@ public class Boardstate {
 
     private void clearLine(int y) {
         //track back up again, replacing each line with the contents of the previous one
-        for (int line = y; y > 0; y--) {
+        for (; y > 0; y--) {
             for (int x = 0; x < width; x++) {
                 filled[x][y] = filled[x][y-1];
             }
