@@ -5,14 +5,14 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class Unit {
 
-    private final List<Coordinate> members;
+    private final Coordinate[] members;
     private final Coordinate pivot;
     private final UnitDimension dimension;
 
@@ -21,8 +21,8 @@ public class Unit {
         if (object != null && object instanceof Unit) {
             Unit unit = (Unit) object;
             if (!pivot.equals(unit.pivot)) return false;
-            //only works cause both lists are sorted
-            if (!members.equals(unit.members)) return false;
+            // only works cause both lists are sorted
+            if (!Arrays.equals(members, unit.members)) return false;
             return true;
         }
         return false;
@@ -30,14 +30,14 @@ public class Unit {
     
     @Override
     public int hashCode() {
-        return 59 * pivot.hashCode() + members.hashCode();
+        return 59 * pivot.hashCode() + Arrays.hashCode(members);
     }
     
     /**
      * Number of members.
      */
     public int size() {
-        return members.size();
+        return members.length;
     }
     
     public String toString() {
@@ -54,22 +54,22 @@ public class Unit {
         this.pivot = new Coordinate(pivotJson.getInt("x"), pivotJson.getInt("y"));
         JSONArray memberJson = json.getJSONArray("members");
         int numMembers = memberJson.length(); 
-        this.members = new ArrayList<>(numMembers);
+        this.members = new Coordinate[numMembers];
         for (int i = 0; i < numMembers; i++) {
             JSONObject member = memberJson.getJSONObject(i);
-            this.members.add(new Coordinate(member.getInt("x"), member.getInt("y")));
+            this.members[i] = new Coordinate(member.getInt("x"), member.getInt("y"));
         }
         this.dimension = setDimension();
     }
 
-    public Unit(Coordinate pivot, List<Coordinate> newMembers) {
+    private Unit(Coordinate pivot, Coordinate[] newMembers) {
         this.members = newMembers;
         this.pivot = pivot;
         this.dimension = setDimension();
     }
 
     private UnitDimension setDimension() {
-        Collections.sort(members);
+        Arrays.sort(members);
         int minX = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE;
         int minY = Integer.MAX_VALUE;
@@ -106,40 +106,43 @@ public class Unit {
     }
 
     //todo simplify nested ifs
-    public List<Coordinate> getAbsoluteMembers(Coordinate pivotPoint) {
+    public Coordinate[] getAbsoluteMembers(Coordinate pivotPoint) {
         int yOffset = pivotPoint.y - pivot.y;
         int xOffset = pivotPoint.x - pivot.x;
-        List<Coordinate> newCoordinates = new ArrayList<>(members.size());
+        Coordinate[] newCoordinates = new Coordinate[members.length];
         if ((pivotPoint.y & 1) == (pivot.y & 1)) {
             // moving from odd to odd row or from even to even row
-            for (Coordinate old : members) {
-                newCoordinates.add(new Coordinate(old.x + xOffset, old.y + yOffset));
+            for (int i = 0; i < members.length; i++) {
+                Coordinate old = members[i];
+                newCoordinates[i] = new Coordinate(old.x + xOffset, old.y + yOffset);
             }
         } else if ((pivotPoint.y & 1) == 0) {
             // moving from odd to even row
             // subtract 1 from x offset in formerly even rows
-            for (Coordinate old : members) {
+            for (int i = 0; i < members.length; i++) {
+                Coordinate old = members[i];
                 if ((old.y & 1) == 0) {
-                    newCoordinates.add(new Coordinate(old.x + xOffset - 1, old.y + yOffset));
+                    newCoordinates[i] = new Coordinate(old.x + xOffset - 1, old.y + yOffset);
                 } else {
-                    newCoordinates.add(new Coordinate(old.x + xOffset, old.y + yOffset));
+                    newCoordinates[i] = new Coordinate(old.x + xOffset, old.y + yOffset);
                 }
             }
         } else {
             // moving from even to odd row
             // add one to x offset in formerly odd rows
-            for (Coordinate old : members) {
+            for (int i = 0; i < members.length; i++) {
+                Coordinate old = members[i];
                 if ((old.y & 1) == 0) {
-                    newCoordinates.add(new Coordinate(old.x + xOffset, old.y + yOffset));
+                    newCoordinates[i] = new Coordinate(old.x + xOffset, old.y + yOffset);
                 } else {
-                    newCoordinates.add(new Coordinate(old.x + xOffset + 1, old.y + yOffset));
+                    newCoordinates[i] = new Coordinate(old.x + xOffset + 1, old.y + yOffset);
                 }
             }
         }
         return newCoordinates;
     }
 
-    public  List<Coordinate> getAbsoluteMembers(Coordinate unitPlace, int rotated) {
+    public Coordinate[] getAbsoluteMembers(Coordinate unitPlace, int rotated) {
         Unit rotatedUnit = rotate(rotated);
         return rotatedUnit.getAbsoluteMembers(unitPlace);
     }
@@ -176,13 +179,13 @@ public class Unit {
             return u;
         }
         
-        List<Coordinate> newMembers = new ArrayList<>(members.size());
-        for (Coordinate member : members) {
-            Coordinate newCoordinate = member;
+        Coordinate[] newMembers = new Coordinate[members.length];
+        for (int k = 0; k < members.length; k++) {
+            Coordinate newCoordinate = members[k];
             for (int i = 0; i < rotations; i++) {
                 newCoordinate = computeRot(pivot, newCoordinate);
             }
-            newMembers.add(newCoordinate);
+            newMembers[k] = newCoordinate;
         }
         u = new Unit(pivot, newMembers);
         this.rotations.put(rotations, u);

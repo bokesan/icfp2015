@@ -180,11 +180,11 @@ public class Boardstate {
     
 
     public boolean doesFillRow(Coordinate position, Unit currentUnit) {
-        List<Coordinate> coordinates = currentUnit.getAbsoluteMembers(position);
+        Coordinate[] coordinates = currentUnit.getAbsoluteMembers(position);
         if (!isValidPosition(coordinates)) {
             return false;
         }
-        int unitSize = coordinates.size();
+        int unitSize = currentUnit.size();
         for (Coordinate coordinate : coordinates) {
             int y = coordinate.y;
             if (unitSize >= freeInRow(y)) {
@@ -203,7 +203,7 @@ public class Boardstate {
         return false;
     }
 
-    private static boolean inUnit(List<Coordinate> cs, int x, int y) {
+    private static boolean inUnit(Coordinate[] cs, int x, int y) {
         for (Coordinate c : cs) {
             if (c.x == x && c.y == y) {
                 return true;
@@ -281,7 +281,7 @@ public class Boardstate {
         }
     }
 
-    private boolean isValidPosition(List<Coordinate> members) {
+    private boolean isValidPosition(Coordinate[] members) {
         for (Coordinate c : members) {
             if (isOutside(c) || isFilled(c)) {
                 return false;
