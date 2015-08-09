@@ -27,9 +27,12 @@ public class TaskSolver {
     private List<PathFinder.Mode> getModes() {
     	List<PathFinder.Mode> modes = new ArrayList<>();
     	modes.add(PathFinder.Mode.FILL_ROWS_3);
+    	modes.add(PathFinder.Mode.WITH_ALL_POWER);
     	modes.add(PathFinder.Mode.WITH_ALL_POWER_1);
     	modes.add(PathFinder.Mode.WITH_ALL_POWER_2);
     	modes.add(PathFinder.Mode.EACH_WORD_ONCE);
+    	modes.add(PathFinder.Mode.EACH_WORD_ONCE_1);
+    	modes.add(PathFinder.Mode.EACH_WORD_ONCE_2);
     	return modes;
     }
 

@@ -18,10 +18,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
+	
+	private static final String TAG = "width-bug-fixed";
 
     public static void main(String[] args) throws IOException {
+    	//System.out.println(Command.translate("Ph'nglui mglw'nafh Cthulhu R'lyeh wgah'nagl fhtagn.".toLowerCase()));
         Arguments arguments = processArgs(args);
-        
         List<Solution> solutions = new ArrayList<>();
         for (String fileString : arguments.getFiles()) {
             String jsonString = new String(Files.readAllBytes(Paths.get(fileString)));
@@ -46,13 +48,13 @@ public class Main {
             JSONObject output = new JSONObject();
             output.put("problemId", solution.id);
             output.put("seed", solution.seed);
-            output.put("tag", "sunday morning");
+            output.put("tag", TAG);
             output.put("solution", solution.commandString);
             combined.put(output);
             points += solution.points;
         }
         int average = (int) Math.floor(points / solutions.size());
-        String file = solutions.get(0).id + "_" + solutions.size() + "_" + average;
+        String file = solutions.get(0).id + "_" + solutions.size() + "_" + average + "_" + TAG;
         writeOutputFile(combined.toString(), file);
         //System.out.println(combined.toString());
     }

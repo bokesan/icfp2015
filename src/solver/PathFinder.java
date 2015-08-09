@@ -17,7 +17,7 @@ public class PathFinder {
     public enum Mode {DOWN_NO_ROTATION, ALTERNATING_DOWN, ALTERNATING_DOWN_WITH_ROTATION, CHRIS_PATH,
     	FILL_ROWS_1, FILL_ROWS_2, FILL_ROWS_3, FILL_ROWS_4,
     	WITH_ALL_POWER, WITH_ALL_POWER_1, WITH_ALL_POWER_2,
-    	EACH_WORD_ONCE}
+    	EACH_WORD_ONCE, EACH_WORD_ONCE_1, EACH_WORD_ONCE_2}
 
     private Boardstate board;
     private final Unit unit;
@@ -48,6 +48,8 @@ public class PathFinder {
             case WITH_ALL_POWER_1: return withPower(1);
             case WITH_ALL_POWER_2: return withPower(2);
             case EACH_WORD_ONCE:	return eachWordOnce(0);
+            case EACH_WORD_ONCE_1:	return eachWordOnce(1);
+            case EACH_WORD_ONCE_2:	return eachWordOnce(2);
             default:    throw new IllegalArgumentException("Illegal Mode");
         }
     }

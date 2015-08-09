@@ -26,6 +26,15 @@ public class Unit {
         }
         return false;
     }
+    
+    public String toString() {
+    	StringBuilder output = new StringBuilder();
+    	output.append("pivot: ").append(pivot.x).append("/").append(pivot.y);
+    	for (Coordinate member : members) {
+    		output.append(" member: ").append(member.x).append("/").append(member.y);
+    	}
+    	return output.toString();
+    }
 
     public Unit(JSONObject json) {
         JSONObject pivotJson = json.getJSONObject("pivot");
