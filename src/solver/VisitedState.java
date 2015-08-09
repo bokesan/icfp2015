@@ -21,4 +21,9 @@ public class VisitedState {
         }
         return false;
     }
+    
+    @Override
+    public int hashCode() {
+        return 31 * position.hashCode() + unit.hashCode();
+    }
 }
