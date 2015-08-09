@@ -43,10 +43,10 @@ public class Statistics {
 	private String getProbs() {
 		StringBuilder builder = new StringBuilder();
 		for (ProblemStats stat : problemstats) {
-			builder.append("problem ").append(String.format("%02d", stat.id)).append(":   ");
-			builder.append(String.format("%02d", stat.seeds)).append("seeds with ");
-			builder.append(String.format("%05d", stat.points / stat.seeds)).append(" average points. Solving mode:   ");
-			builder.append(stat.mode.name());
+			builder.append("problem ").append(String.format("%02d", stat.id)).append(":    ");
+			builder.append(String.format("%05d", stat.points / stat.seeds)).append(" points    ");
+			builder.append(String.format("%02d", stat.seeds)).append(" seeds     Solving modes:   ");
+			builder.append(stat.modes);
 			builder.append("\n");
 		}
 		return builder.toString();
@@ -56,7 +56,7 @@ public class Statistics {
 		StringBuilder builder = new StringBuilder();
 		for (ModeStats stat : modestats) {
 			builder.append(stat.mode.name()).append(":   ");
-			builder.append(stat.wins).append("wins and ");
+			builder.append(stat.wins).append(" wins and ");
 			builder.append(stat.points / stat.used).append(" average points");
 			builder.append("\n");
 		}
@@ -85,6 +85,7 @@ public class Statistics {
 		modestats = new ModeStats[modes.size()];
 		for (int i = 0; i < problemstats.length; i++) {
 			problemstats[i] = new ProblemStats();
+			problemstats[i].modes = new TreeSet<>();
 		}
 		for (int i = 0; i < modestats.length; i++) {
 			modestats[i] = new ModeStats();
@@ -94,7 +95,7 @@ public class Statistics {
 			int prob = problems.headSet(solution.id).size();
 			problemstats[prob].points += solution.points;
 			problemstats[prob].seeds += 1;
-			problemstats[prob].mode = solution.mode;
+			problemstats[prob].modes.add(solution.mode);
 			problemstats[prob].id = solution.id;
 			
 			int mod = modes.headSet(solution.mode).size();
@@ -112,7 +113,7 @@ public class Statistics {
 		int id;
 		int points = 0;
 		int seeds = 0;
-		PathFinder.Mode mode;
+		SortedSet<PathFinder.Mode> modes;
 	}
 	
 	private class ModeStats {

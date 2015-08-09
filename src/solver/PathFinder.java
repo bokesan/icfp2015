@@ -8,16 +8,19 @@ import main.Boardstate;
 import units.Coordinate;
 import units.Unit;
 
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PathFinder {
 
-    public enum Mode {DOWN_NO_ROTATION, ALTERNATING_DOWN, ALTERNATING_DOWN_WITH_ROTATION, CHRIS_PATH,
+    public enum Mode {
+    	CHRIS_PATH,
     	FILL_ROWS_1, FILL_ROWS_2, FILL_ROWS_3, FILL_ROWS_4,
-    	WITH_ALL_POWER, WITH_ALL_POWER_1, WITH_ALL_POWER_2,
-    	EACH_WORD_ONCE, EACH_WORD_ONCE_1, EACH_WORD_ONCE_2}
+    	WITH_ALL_POWER, WITH_ALL_POWER_1, WITH_ALL_POWER_2, WITH_ALL_POWER_3,
+    	EACH_WORD_ONCE, EACH_WORD_ONCE_1, EACH_WORD_ONCE_2, EACH_WORD_ONCE_3;
+    	
+    	public String toString() { return name(); }
+    }
 
     private Boardstate board;
     private final Unit unit;
@@ -36,9 +39,6 @@ public class PathFinder {
     //todo extract strategy methods, de-duplicate code
     public PathResult findPath(Mode mode) {
         switch (mode) {
-            case DOWN_NO_ROTATION: return justGoDown();
-            case ALTERNATING_DOWN: return alternatingDown();
-            case ALTERNATING_DOWN_WITH_ROTATION: return alternatingDownWithRotation();
             case CHRIS_PATH: return chrisPath();
             case FILL_ROWS_1: return fillRows(1);
             case FILL_ROWS_2: return fillRows(2);
@@ -47,9 +47,11 @@ public class PathFinder {
             case WITH_ALL_POWER: return withPower(0);
             case WITH_ALL_POWER_1: return withPower(1);
             case WITH_ALL_POWER_2: return withPower(2);
+            case WITH_ALL_POWER_3: return withPower(3);
             case EACH_WORD_ONCE:	return eachWordOnce(0);
             case EACH_WORD_ONCE_1:	return eachWordOnce(1);
             case EACH_WORD_ONCE_2:	return eachWordOnce(2);
+            case EACH_WORD_ONCE_3:	return eachWordOnce(3);
             default:    throw new IllegalArgumentException("Illegal Mode");
         }
     }
