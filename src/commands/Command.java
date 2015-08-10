@@ -1,30 +1,34 @@
 package commands;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.List;
 
 public enum Command {
-    EAST, WEST, SOUTHEAST, SOUTHWEST, CLOCKWISE, COUNTERCLOCKWISE;
+    EAST("ebcfy2"),
+    WEST("!p'.03"),
+    SOUTHEAST("lmno 5"),
+    SOUTHWEST("iaghj4"),
+    CLOCKWISE("dqrvz1"),
+    COUNTERCLOCKWISE("kstuwx");
 
-    private List<Character> possibleCharacters;
+    private final String possibleCharacters;
+    
+    private Command(String chars) {
+        possibleCharacters = chars;
+    }
 
-    static {
-        EAST.possibleCharacters = Arrays.asList('e', 'b', 'c', 'f', 'y', '2');
-        WEST.possibleCharacters = Arrays.asList('!', 'p', '\'', '.', '0', '3');
-        SOUTHEAST.possibleCharacters = Arrays.asList('l', 'm', 'n', 'o', ' ', '5');
-        SOUTHWEST.possibleCharacters = Arrays.asList('i', 'a', 'g', 'h', 'j', '4');
-        CLOCKWISE.possibleCharacters = Arrays.asList('d', 'q', 'r', 'v', 'z', '1');
-        COUNTERCLOCKWISE.possibleCharacters = Arrays.asList('k', 's', 't', 'u', 'w', 'x');
+    public String getPossibleCharacters() {
+        return possibleCharacters;
     }
     
-
-    public List<Character> getPossibleCharacters() {
-        return new ArrayList<>(possibleCharacters);
+    public char getDefaultCharacter() {
+        return possibleCharacters.charAt(0);
     }
     
     public static List<Command> translate(String powerWord) {
-    	List<Command> commands = new ArrayList<>();
+    	List<Command> commands = new ArrayList<>(powerWord.length());
     	for (Character c : powerWord.toCharArray()) {
     		Command command = getCommandForChar(c);
     		if (command != null) commands.add(command);
@@ -72,5 +76,13 @@ public enum Command {
 		case 'x': return COUNTERCLOCKWISE;
 		default: return null;
 		}
+	}
+	
+	public static Command getAny(EnumSet<Command> cmds) {
+	    Iterator<Command> it = cmds.iterator();
+	    if (it.hasNext()) {
+	        return it.next();
+	    }
+	    return null;
 	}
 }

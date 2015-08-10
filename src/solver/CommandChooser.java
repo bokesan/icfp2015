@@ -24,7 +24,7 @@ public class CommandChooser {
     public static String setFirstCharacter(CommandSequence sequence) {
         StringBuilder result = new StringBuilder();
         for (Command command : sequence.getCommands()) {
-            result.append(command.getPossibleCharacters().get(0));
+            result.append(command.getDefaultCharacter());
         }
         return result.toString();
     }
@@ -55,7 +55,7 @@ public class CommandChooser {
 				return word;
 			}
 		}
-		return commands.get(0).getPossibleCharacters().get(0).toString();
+		return Character.toString(commands.get(0).getDefaultCharacter());
 	}
 
 	private void calculatePowerwordPoints() {
