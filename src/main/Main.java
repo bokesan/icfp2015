@@ -15,36 +15,51 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+
 
 public class Main {
-	
+
 	public static final String TAG = "alarm-a-llama";
+
+	private static ExecutorService threadPool = null;
+	public static ExecutorService getThreadPool() {
+	    return threadPool;
+	}
 
     public static void main(String[] args) throws IOException {
     	long starttime = System.currentTimeMillis();
     	Statistics stats = new Statistics();
-        Arguments arguments = processArgs(args);
-        List<Solution> solutions = new ArrayList<>();
-        for (String fileString : arguments.getFiles()) {
-            String jsonString = new String(Files.readAllBytes(Paths.get(fileString)));
-            JSONObject json = new JSONObject(jsonString);
-            int id = json.getInt("id");
-            for (SourceStream stream : SourceStream.getSourceStreams(json)) {
-            	long start = System.currentTimeMillis();
-                Boardstate board = new Boardstate(json);
-                Solution solution = new TaskSolver(board, stream, arguments.getPowerWords()).solve();
-                solution.id = id;
-                long time = System.currentTimeMillis() - start;
-                solution.seconds = (int) Math.ceil(time / 1000);
-                solutions.add(solution);
-            }
-            if (arguments.stats) stats.add(solutions);
-            if (arguments.devMode) createJsonOutput(solutions, true);
-            if (arguments.devMode) solutions.clear();
-        }
-        if (!arguments.devMode) createJsonOutput(solutions, false);
-        long duration = System.currentTimeMillis() - starttime;
-        if (arguments.stats) stats.writeStatsFile("results/stats.txt", duration);
+    	// threadPool = Executors.newFixedThreadPool(6);
+    	try {
+    	    Arguments arguments = processArgs(args);
+    	    List<Solution> solutions = new ArrayList<>();
+    	    for (String fileString : arguments.getFiles()) {
+    	        String jsonString = new String(Files.readAllBytes(Paths.get(fileString)));
+    	        JSONObject json = new JSONObject(jsonString);
+    	        int id = json.getInt("id");
+    	        for (SourceStream stream : SourceStream.getSourceStreams(json)) {
+    	            long start = System.currentTimeMillis();
+    	            Boardstate board = new Boardstate(json);
+    	            Solution solution = new TaskSolver(board, stream, arguments.getPowerWords()).solve();
+    	            solution.id = id;
+    	            long time = System.currentTimeMillis() - start;
+    	            solution.seconds = (int) Math.ceil(time / 1000);
+    	            solutions.add(solution);
+    	        }
+    	        if (arguments.stats) stats.add(solutions);
+    	        if (arguments.devMode) createJsonOutput(solutions, true);
+    	        if (arguments.devMode) solutions.clear();
+    	    }
+    	    if (!arguments.devMode) createJsonOutput(solutions, false);
+    	    long duration = System.currentTimeMillis() - starttime;
+    	    if (arguments.stats) stats.writeStatsFile("results/stats.txt", duration);
+    	}
+    	finally {
+    	    if (threadPool != null) {
+    	        threadPool.shutdown();
+    	    }
+    	}
     }
 
     private static void createJsonOutput(List<Solution> solutions, boolean writefile) {

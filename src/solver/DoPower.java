@@ -25,17 +25,21 @@ public class DoPower {
 	}
 
 	public boolean doIfPossible(String string, int lookahead) {
-		List<Command> commands = Command.translate(string);
-		boolean possible = canPerform(commands);
-		if (possible)  {
-		    doPerform(commands);
-		} else if (lookahead > 0) {
-		    for (Command command : board.getNonLockingMoves(currentUnit, position, visited)) {
-		        Character cmd = command.getPossibleCharacters().get(0); //does not matter which, just for adding that command
-		        if (doIfPossible(cmd + string, lookahead - 1)) return true;
-		    }
-		}
-		return possible;
+		return doIfPossible(Command.translate(string), lookahead);
+	}
+	
+	private boolean doIfPossible(List<Command> commands, int lookahead) {
+        if (canPerform(commands))  {
+            doPerform(commands);
+            return true;
+        } else if (lookahead > 0) {
+            for (Command command : board.getNonLockingMoves(currentUnit, position, visited)) {
+                commands.add(0, command);
+                if (doIfPossible(commands, lookahead - 1)) return true;
+                commands.remove(0);
+            }
+        }
+        return false;
 	}
 
 	private boolean canPerform(List<Command> commands) {

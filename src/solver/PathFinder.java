@@ -9,6 +9,7 @@ import units.Coordinate;
 import units.Unit;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 
 public class PathFinder {
@@ -135,13 +136,13 @@ public class PathFinder {
         CommandSequence commands = new CommandSequence();
         Coordinate position = unit.getSpawnPoint(board.getWidth());
         visited.add(new VisitedState(position, currentUnit));
-        List<Command> moves = board.getNonLockingMoves(unit, position, visited);
+        EnumSet<Command> moves = board.getNonLockingMoves(unit, position, visited);
         outer: while (!moves.isEmpty()) {
         	//if we can fill a row, lock the unit in place
         	if (board.doesFillRow(position, currentUnit)) {
-        		List<Command> lockingMoves = board.getLockingMoves(currentUnit, position);
+        		EnumSet<Command> lockingMoves = board.getLockingMoves(currentUnit, position);
         		//there is always at least one, if we are in a full row (EAST or WEST)
-        		commands.append(lockingMoves.get(0));
+        		commands.append(Command.getAny(lockingMoves));
         		PathResult result = new PathResult();
                 result.rotated = rotation;
                 result.unitPlace = position;
@@ -150,10 +151,10 @@ public class PathFinder {
         	} 
         	
         	//check whether we can fill a row next move
-        	List<Command> fillingMoves = board.getFillingMoves(depth, currentUnit, position);
+        	EnumSet<Command> fillingMoves = board.getFillingMoves(depth, currentUnit, position);
         	if (!fillingMoves.isEmpty()) {
         		//check whether one of the filling moves is allowed
-        		List<Command> allowed = new ArrayList<>();
+        		EnumSet<Command> allowed = EnumSet.noneOf(Command.class);
         		for (Command command : fillingMoves) {
         			if (moves.contains(command)) allowed.add(command);
         		}
@@ -216,7 +217,7 @@ public class PathFinder {
             moves = board.getNonLockingMoves(currentUnit, position, visited);
         }
         //see whether we can snatch a word when locking
-        List<Command> lockMoves = board.getLockingMoves(currentUnit, position);
+        EnumSet<Command> lockMoves = board.getLockingMoves(currentUnit, position);
         commands.append(checkForWords(lockMoves, commands));
         PathResult result = new PathResult();
         result.rotated = rotation;
@@ -233,13 +234,13 @@ public class PathFinder {
         CommandSequence commands = new CommandSequence();
         Coordinate position = unit.getSpawnPoint(board.getWidth());
         visited.add(new VisitedState(position, currentUnit));
-        List<Command> moves = board.getNonLockingMoves(unit, position, visited);
+        EnumSet<Command> moves = board.getNonLockingMoves(unit, position, visited);
         outer: while (!moves.isEmpty()) {
         	//if we can fill a row, lock the unit in place
         	if (board.doesFillRow(position, currentUnit)) {
-        		List<Command> lockingMoves = board.getLockingMoves(currentUnit, position);
+        		EnumSet<Command> lockingMoves = board.getLockingMoves(currentUnit, position);
         		//there is always at least one, if we are in a full row (EAST or WEST)
-        		commands.append(lockingMoves.get(0));
+        		commands.append(Command.getAny(lockingMoves));
         		PathResult result = new PathResult();
                 result.rotated = rotation;
                 result.unitPlace = position;
@@ -248,10 +249,10 @@ public class PathFinder {
         	} 
         	
         	//check whether we can fill a row next move
-        	List<Command> fillingMoves = board.getFillingMoves(depth, currentUnit, position);
+        	EnumSet<Command> fillingMoves = board.getFillingMoves(depth, currentUnit, position);
         	if (!fillingMoves.isEmpty()) {
         		//check whether one of the filling moves is allowed
-        		List<Command> allowed = new ArrayList<>();
+        		EnumSet<Command> allowed = EnumSet.noneOf(Command.class);
         		for (Command command : fillingMoves) {
         			if (moves.contains(command)) allowed.add(command);
         		}
@@ -311,7 +312,7 @@ public class PathFinder {
             moves = board.getNonLockingMoves(currentUnit, position, visited);
         }
         //see whether we can snatch a word when locking
-        List<Command> lockMoves = board.getLockingMoves(currentUnit, position);
+        EnumSet<Command> lockMoves = board.getLockingMoves(currentUnit, position);
         commands.append(checkForWords(lockMoves, commands));
         PathResult result = new PathResult();
         result.rotated = rotation;
@@ -332,7 +333,7 @@ public class PathFinder {
 		powerWords = allowed;
 	}
 
-	private Command checkForWords(List<Command> lockMoves, CommandSequence commands) {
+	private Command checkForWords(EnumSet<Command> lockMoves, CommandSequence commands) {
 		List<List<Command>> patterns = new ArrayList<>();
 		for (String word : powerWords) {
 		    patterns.add(Command.translate(word));
@@ -347,7 +348,7 @@ public class PathFinder {
 			return pattern.get(pattern.size() - 1);
 		}
 		//todo pick one to continue or start a pattern
-		return lockMoves.get(0);
+		return Command.getAny(lockMoves);
 	}
 
 	private PathResult fillRows(int depth) {
@@ -357,13 +358,13 @@ public class PathFinder {
         CommandSequence commands = new CommandSequence();
         Coordinate position = unit.getSpawnPoint(board.getWidth());
         visited.add(new VisitedState(position, currentUnit));
-        List<Command> moves = board.getNonLockingMoves(unit, position, visited);
+        EnumSet<Command> moves = board.getNonLockingMoves(unit, position, visited);
         outer: while (!moves.isEmpty()) {
         	//if we can fill a row, lock the unit in place
         	if (board.doesFillRow(position, currentUnit)) {
-        		List<Command> lockingMoves = board.getLockingMoves(currentUnit, position);
+        		EnumSet<Command> lockingMoves = board.getLockingMoves(currentUnit, position);
         		//there is always at least one, if we are in a full row (EAST or WEST)
-        		commands.append(lockingMoves.get(0));
+        		commands.append(Command.getAny(lockingMoves));
         		PathResult result = new PathResult();
                 result.rotated = rotation;
                 result.unitPlace = position;
@@ -372,10 +373,10 @@ public class PathFinder {
         	} 
         	
         	//check whether we can fill a row next move
-        	List<Command> fillingMoves = board.getFillingMoves(depth, currentUnit, position);
+        	EnumSet<Command> fillingMoves = board.getFillingMoves(depth, currentUnit, position);
         	if (!fillingMoves.isEmpty()) {
         		//check whether one of the filling moves is allowed
-        		List<Command> allowed = new ArrayList<>();
+        		EnumSet<Command> allowed = EnumSet.noneOf(Command.class);
         		for (Command command : fillingMoves) {
         			if (moves.contains(command)) allowed.add(command);
         		}
@@ -429,7 +430,7 @@ public class PathFinder {
         CommandSequence commands = new CommandSequence();
         Coordinate position = unit.getSpawnPoint(board.getWidth());
         visited.add(new VisitedState(position, currentUnit));
-        List<Command> moves = board.getNonLockingMoves(unit, position, visited);
+        EnumSet<Command> moves = board.getNonLockingMoves(unit, position, visited);
         outer: while (!moves.isEmpty()) {
             for (Coordinate member : currentUnit.getAbsoluteMembers(position)) {
                 if (member.y == board.getHeight() - 1) break outer;
@@ -477,7 +478,7 @@ public class PathFinder {
         CommandSequence commands = new CommandSequence();
         Coordinate position = unit.getSpawnPoint(board.getWidth());
         visited.add(new VisitedState(position, currentUnit));
-        List<Command> moves = board.getNonLockingMoves(unit, position, visited);
+        EnumSet<Command> moves = board.getNonLockingMoves(unit, position, visited);
         while (!moves.isEmpty()) {
             if (remainingUnits.size() % 2 == 0) {
                 if (moves.contains(Command.SOUTHWEST)) {
@@ -544,7 +545,7 @@ public class PathFinder {
         if (remainingUnits.size() % 2 == 0) return  justGoDown();
         CommandSequence commands = new CommandSequence();
         Coordinate position = unit.getSpawnPoint(board.getWidth());
-        List<Command> moves = board.getNonLockingMoves(unit, position, new ArrayList<VisitedState>());
+        EnumSet<Command> moves = board.getNonLockingMoves(unit, position, new ArrayList<VisitedState>());
         while (!moves.isEmpty()) {
             if (moves.contains(Command.SOUTHWEST)) {
                 commands.append(Command.SOUTHWEST);
@@ -575,7 +576,7 @@ public class PathFinder {
     private PathResult justGoDown() {
         CommandSequence commands = new CommandSequence();
         Coordinate position = unit.getSpawnPoint(board.getWidth());
-        List<Command> moves = board.getNonLockingMoves(unit, position, new ArrayList<VisitedState>());
+        EnumSet<Command> moves = board.getNonLockingMoves(unit, position, new ArrayList<VisitedState>());
         while (!moves.isEmpty()) {
             if (moves.contains(Command.SOUTHEAST)) {
                 commands.append(Command.SOUTHEAST);

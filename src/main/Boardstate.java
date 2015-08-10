@@ -9,10 +9,13 @@ import solver.VisitedState;
 import units.Coordinate;
 import units.Unit;
 
-import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 
 public class Boardstate {
@@ -159,8 +162,8 @@ public class Boardstate {
         return width;
     }
 
-    public List<Command> getNonLockingMoves(Unit unit, Coordinate position, List<VisitedState> visited) {
-        List<Command> possible = new ArrayList<>(6);
+    public EnumSet<Command> getNonLockingMoves(Unit unit, Coordinate position, List<VisitedState> visited) {
+        EnumSet<Command> possible = EnumSet.noneOf(Command.class);
         if (isValidPosition(unit, position.move(Command.SOUTHEAST))) possible.add(Command.SOUTHEAST);
         if (isValidPosition(unit, position.move(Command.SOUTHWEST))) possible.add(Command.SOUTHWEST);
         if (canPlaceUnit(position.move(Command.EAST), unit, visited)) possible.add(Command.EAST);
@@ -185,8 +188,9 @@ public class Boardstate {
             int y = coordinate.y;
             if (unitSize >= freeInRow(y)) {
                 boolean full = true;
-                for (int x = 0; x < width; x++) {
-                    if (!(isFilled(x, y) || inUnit(coordinates, x, y))) {
+                BitSet row = filled[y];
+                for (int x = row.nextClearBit(0); x < width; x = row.nextClearBit(x+1)) {
+                    if (!inUnit(coordinates, x, y)) {
                         full = false;
                         break;
                     }
@@ -208,9 +212,9 @@ public class Boardstate {
         return false;
     }
 	
-    public List<Command> getLockingMoves(Unit unit, Coordinate position) {
+    public EnumSet<Command> getLockingMoves(Unit unit, Coordinate position) {
         //we do not need to check visited locations, because we only take positions which are invalid, thus we cannot have been there
-        List<Command> possible = new ArrayList<>(6);
+        EnumSet<Command> possible = EnumSet.noneOf(Command.class);
         if (!isValidPosition(unit, position.move(Command.SOUTHEAST))) possible.add(Command.SOUTHEAST);
         if (!isValidPosition(unit, position.move(Command.SOUTHWEST))) possible.add(Command.SOUTHWEST);
         if (!isValidPosition(unit, position.move(Command.EAST))) possible.add(Command.EAST);
@@ -220,11 +224,13 @@ public class Boardstate {
         return possible;
     }
 
-    public List<Command> getFillingMoves(int depth, Unit unit, Coordinate position) {
+    
+    public EnumSet<Command> getFillingMoves(final int depth, final Unit unit, final Coordinate position) {
+        EnumSet<Command> possible = EnumSet.noneOf(Command.class);
         if (!(fillableRows(unit) && isValidPosition(unit, position))) {
-            return Collections.emptyList();
+            return possible;
         }
-        List<Command> possible = new ArrayList<>(6);
+        ExecutorService exec = Main.getThreadPool();
         if (depth <= 0) {
             if (doesFillRow(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
             if (doesFillRow(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
@@ -232,6 +238,53 @@ public class Boardstate {
             if (doesFillRow(position.move(Command.WEST), unit)) possible.add(Command.WEST);
             if (doesFillRow(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
             if (doesFillRow(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
+        } else if (exec != null) {
+            Future<Boolean> fSE = exec.submit(new Callable<Boolean>() {
+                @Override
+                public Boolean call() throws Exception {
+                    return hasFillingMoves(depth-1, unit, position.move(Command.SOUTHEAST));
+                }
+            });
+            Future<Boolean> fE = exec.submit(new Callable<Boolean>() {
+                @Override
+                public Boolean call() throws Exception {
+                    return hasFillingMoves(depth-1, unit, position.move(Command.EAST));
+                }
+            });
+            Future<Boolean> fSW = exec.submit(new Callable<Boolean>() {
+                @Override
+                public Boolean call() throws Exception {
+                    return hasFillingMoves(depth-1, unit, position.move(Command.SOUTHWEST));
+                }
+            });
+            Future<Boolean> fW = exec.submit(new Callable<Boolean>() {
+                @Override
+                public Boolean call() throws Exception {
+                    return hasFillingMoves(depth-1, unit, position.move(Command.WEST));
+                }
+            });
+            Future<Boolean> fCW = exec.submit(new Callable<Boolean>() {
+                @Override
+                public Boolean call() throws Exception {
+                    return hasFillingMoves(depth-1, unit.getRotatedUnit(1), position);
+                }
+            });
+            Future<Boolean> fCCW = exec.submit(new Callable<Boolean>() {
+                @Override
+                public Boolean call() throws Exception {
+                    return hasFillingMoves(depth-1, unit.getRotatedUnit(5), position);
+                }
+            });
+            try {
+                if (fSE.get()) possible.add(Command.SOUTHEAST);
+                if (fE.get()) possible.add(Command.EAST);
+                if (fSW.get()) possible.add(Command.SOUTHWEST);
+                if (fW.get()) possible.add(Command.WEST);
+                if (fCW.get()) possible.add(Command.CLOCKWISE);
+                if (fCCW.get()) possible.add(Command.COUNTERCLOCKWISE);
+            } catch (ExecutionException | InterruptedException ex) {
+                throw new RuntimeException("bad thread thingie", ex);
+            }
         } else {
             if (hasFillingMoves(depth - 1, unit, position.move(Command.SOUTHEAST))) possible.add(Command.SOUTHEAST);
             if (hasFillingMoves(depth - 1, unit, position.move(Command.EAST))) possible.add(Command.EAST);
