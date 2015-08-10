@@ -223,13 +223,13 @@ public class Boardstate {
         return possible;
     }
 
-    private static final boolean parallel = false;
     
     public EnumSet<Command> getFillingMoves(final int depth, final Unit unit, final Coordinate position) {
         EnumSet<Command> possible = EnumSet.noneOf(Command.class);
         if (!(fillableRows(unit) && isValidPosition(unit, position))) {
             return possible;
         }
+        ExecutorService exec = Main.getThreadPool();
         if (depth <= 0) {
             if (doesFillRow(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
             if (doesFillRow(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
@@ -237,8 +237,7 @@ public class Boardstate {
             if (doesFillRow(position.move(Command.WEST), unit)) possible.add(Command.WEST);
             if (doesFillRow(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
             if (doesFillRow(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
-        } else if (parallel) {
-            ExecutorService exec = Main.getThreadPool();
+        } else if (exec != null) {
             Future<Boolean> fSE = exec.submit(new Callable<Boolean>() {
                 @Override
                 public Boolean call() throws Exception {

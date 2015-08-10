@@ -16,13 +16,13 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+
 
 public class Main {
 	
 	public static final String TAG = "five-past-twelve";
 	
-	private static ExecutorService threadPool;
+	private static ExecutorService threadPool = null;
 	
 	public static ExecutorService getThreadPool() {
 	    return threadPool;
@@ -31,7 +31,7 @@ public class Main {
     public static void main(String[] args) throws IOException {
     	long starttime = System.currentTimeMillis();
     	Statistics stats = new Statistics();
-    	threadPool = Executors.newFixedThreadPool(6);
+    	// threadPool = Executors.newFixedThreadPool(6);
     	try {
     	    Arguments arguments = processArgs(args);
     	    List<Solution> solutions = new ArrayList<>();
@@ -57,7 +57,9 @@ public class Main {
     	    if (arguments.stats) stats.writeStatsFile("results/stats.txt", duration);
     	}
     	finally {
-    	    threadPool.shutdown();
+    	    if (threadPool != null) {
+    	        threadPool.shutdown();
+    	    }
     	}
     }
 
