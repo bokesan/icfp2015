@@ -15,7 +15,7 @@ public class Unit {
     private final Coordinate[] members;
     private final Coordinate pivot;
     private final UnitDimension dimension;
-
+    
     @Override
     public boolean equals(Object object) {
         if (object != null && object instanceof Unit) {
