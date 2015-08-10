@@ -11,7 +11,8 @@ Folders:
 
 Our main implementation is written in Java.
 
-The [web version](web/index.html) was created mainly to experiment with
+The [web version](http://www.chr-breitkopf.de/comp/icfp2015/index.html) was
+created mainly to experiment with
 the rules, but also includes a simple solver.
 
 The Haskell version was written during the lightning phase, because we
