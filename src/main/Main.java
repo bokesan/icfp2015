@@ -23,7 +23,6 @@ public class Main {
     public static void main(String[] args) throws IOException {
     	long starttime = System.currentTimeMillis();
     	Statistics stats = new Statistics();
-    	//System.out.println("conway.: " + commands.Command.translate("conway.".toLowerCase()));
         Arguments arguments = processArgs(args);
         List<Solution> solutions = new ArrayList<>();
         for (String fileString : arguments.getFiles()) {
@@ -102,6 +101,8 @@ public class Main {
                 case "-m" :     megabytes = Integer.parseInt(value);
                                 break;
                 case "-p" :     powerWords.add(value.replace("\"", ""));
+                                break;
+                case "-trans" : System.out.println(value + ": " + commands.Command.translate(value.toLowerCase()));
                                 break;
                 case "--delay":
                     // delay for attaching profile
