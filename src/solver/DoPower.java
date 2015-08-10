@@ -31,7 +31,8 @@ public class DoPower {
 		    doPerform(commands);
 		} else if (lookahead > 0) {
 		    for (Command command : board.getNonLockingMoves(currentUnit, position, visited)) {
-		        if (doIfPossible(string, lookahead - 1)) return true;
+		        Character cmd = command.getPossibleCharacters().get(0); //does not matter which, just for adding that command
+		        if (doIfPossible(cmd + string, lookahead - 1)) return true;
 		    }
 		}
 		return possible;
