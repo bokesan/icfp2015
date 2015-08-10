@@ -4,6 +4,7 @@ package main;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import solver.PathFinder;
 import solver.TaskSolver;
 import units.SourceStream;
 
@@ -20,7 +21,7 @@ import java.util.concurrent.ExecutorService;
 
 public class Main {
 
-	public static final String TAG = "alarm-a-llama";
+	public static final String TAG = "level-llama";
 
 	private static ExecutorService threadPool = null;
 	public static ExecutorService getThreadPool() {
@@ -30,28 +31,38 @@ public class Main {
     public static void main(String[] args) throws IOException {
     	long starttime = System.currentTimeMillis();
     	Statistics stats = new Statistics();
+        List<Solution> bestSolutions = new ArrayList<>();
     	// threadPool = Executors.newFixedThreadPool(6);
     	try {
     	    Arguments arguments = processArgs(args);
-    	    List<Solution> solutions = new ArrayList<>();
-    	    for (String fileString : arguments.getFiles()) {
-    	        String jsonString = new String(Files.readAllBytes(Paths.get(fileString)));
-    	        JSONObject json = new JSONObject(jsonString);
-    	        int id = json.getInt("id");
-    	        for (SourceStream stream : SourceStream.getSourceStreams(json)) {
-    	            long start = System.currentTimeMillis();
-    	            Boardstate board = new Boardstate(json);
-    	            Solution solution = new TaskSolver(board, stream, arguments.getPowerWords()).solve();
-    	            solution.id = id;
-    	            long time = System.currentTimeMillis() - start;
-    	            solution.seconds = (int) Math.ceil(time / 1000);
-    	            solutions.add(solution);
+    	    List<JSONObject> problems = initProblems(arguments);
+    	    int maxlevel = arguments.level;
+    	    if (maxlevel == -1) maxlevel = PathFinder.Mode.getMaxLevel();
+    	    for (int level = 0; level <= maxlevel; level++) {
+    	        long levelstart = System.currentTimeMillis();
+                List<Solution> solutions = new ArrayList<>();
+    	        for (JSONObject problem : problems) {
+    	            int id = problem.getInt("id");
+    	            for (SourceStream stream : SourceStream.getSourceStreams(problem)) {
+    	                long start = System.currentTimeMillis();
+    	                Boardstate board = new Boardstate(problem);
+    	                Solution solution = new TaskSolver(board, stream, arguments.getPowerWords()).solve(level);
+    	                solution.id = id;
+    	                long time = System.currentTimeMillis() - start;
+    	                solution.seconds = (int) Math.ceil(time / 1000);
+    	                solutions.add(solution);
+    	            }
     	        }
-    	        if (arguments.stats) stats.add(solutions);
-    	        if (arguments.devMode) createJsonOutput(solutions, true);
-    	        if (arguments.devMode) solutions.clear();
+    	        int secondsLevel = (int) Math.floor(System.currentTimeMillis() - levelstart) / 1000;
+                int secondsTotal = (int) Math.floor(System.currentTimeMillis() - starttime) / 1000;
+    	        if (arguments.devMode) System.out.println("level " + level + " completed: " + secondsLevel + " seconds (" + secondsTotal + " seconds total)");
+    	        //todo put time into stats if stats    	        
+    	        bestSolutions = filterBestSolutions(bestSolutions, solutions);
+    	        //todo check for time left
     	    }
-    	    if (!arguments.devMode) createJsonOutput(solutions, false);
+    	    
+    	    if (arguments.stats) stats.add(bestSolutions);
+    	    createJsonOutput(bestSolutions, arguments.devMode);
     	    long duration = System.currentTimeMillis() - starttime;
     	    if (arguments.stats) stats.writeStatsFile("results/stats.txt", duration);
     	}
@@ -62,9 +73,33 @@ public class Main {
     	}
     }
 
+    private static List<Solution> filterBestSolutions(List<Solution> bestSolutions, List<Solution> solutions) {
+        if (bestSolutions.isEmpty()) return new ArrayList<>(solutions);
+        List<Solution> newBest = new ArrayList<>();
+        for (int i = 0; i < bestSolutions.size(); i++) {
+            Solution oldsol = bestSolutions.get(i);
+            Solution newsol = solutions.get(i);
+            if (newsol.points > oldsol.points) {
+                newBest.add(newsol);
+            } else {
+                newBest.add(oldsol);
+            }
+        }
+        return newBest;
+    }
+
+    private static List<JSONObject> initProblems(Arguments arguments) throws IOException {
+        List<JSONObject> results = new ArrayList<>();
+        for (String fileString : arguments.getFiles()) {
+            String jsonString = new String(Files.readAllBytes(Paths.get(fileString)));
+            JSONObject json = new JSONObject(jsonString);
+            results.add(json);
+        }
+        return results;
+    }
+
     private static void createJsonOutput(List<Solution> solutions, boolean writefile) {
         JSONArray combined = new JSONArray();
-        long points = 0;
         for (Solution solution : solutions) {
             JSONObject output = new JSONObject();
             output.put("problemId", solution.id);
@@ -72,9 +107,8 @@ public class Main {
             output.put("tag", TAG);
             output.put("solution", solution.commandString);
             combined.put(output);
-            points += solution.points;
         }
-        String file = solutions.get(0).id + "_" + TAG;
+        String file = solutions.size() + "_results_" + TAG;
         if (writefile) writeOutputFile(combined.toString(), file);
         if (!writefile) System.out.println(combined.toString());
     }
@@ -99,6 +133,7 @@ public class Main {
         boolean devmode = false;
         boolean stats = false;
         int cores = 0;
+        int level = -1;
         for (int i = 0; i < args.length - 1; i += 2) {
             String flag = args[i];
             String value = args[i + 1];
@@ -119,6 +154,8 @@ public class Main {
                                 break;
                 case "-trans" : System.out.println(value + ": " + commands.Command.translate(value.toLowerCase()));
                                 break;
+                case "-l" :     level = Integer.parseInt(value);
+                                break;
                 case "--delay":
                     // delay for attaching profile
                     try {
@@ -132,7 +169,7 @@ public class Main {
                     break;
             }
         }
-        return new Arguments(files, powerWords, seconds, megabytes, devmode, stats, cores);
+        return new Arguments(files, powerWords, seconds, megabytes, devmode, stats, cores, level);
     }
 
     private static class Arguments {
@@ -142,14 +179,16 @@ public class Main {
         public final boolean devMode;
         public final boolean stats;
         public final int cores;
+        public final int level;
 
-        public Arguments(List<String> files, List<String> powerWords, int seconds, int megabytes, boolean devmode, boolean stats, int cores) {
+        public Arguments(List<String> files, List<String> powerWords, int seconds, int megabytes, boolean devmode, boolean stats, int cores, int level) {
             this.files = new ArrayList<String>(files);
             this.powerWords = new ArrayList<String>(powerWords);
             this.secondsTimeLimit = seconds;
             this.devMode = devmode;
             this.stats = stats;
             this.cores = cores;
+            this.level = level;
         }
 
         public List<String> getFiles() {

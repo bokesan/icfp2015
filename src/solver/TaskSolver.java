@@ -21,15 +21,11 @@ public class TaskSolver {
         this.stream = stream;
         this.powerWords = new ArrayList<>(powerWords);
     }
-    
-    private List<PathFinder.Mode> getModes() {
-    	return Arrays.asList(PathFinder.Mode.values());
-    }
 
-    public Solution solve() {
+    public Solution solve(int level) {
     	List<TaskSolution> subSolutions = new ArrayList<>();
         CommandChooser chooser = new CommandChooser(powerWords);
-    	for (PathFinder.Mode mode : getModes()) {
+    	for (PathFinder.Mode mode : PathFinder.Mode.getModes(level)) {
     		Boardstate newBoard = board.getInitialStateClone();
     		SourceStream newStream = stream.getCopy();
     		TaskSolution subSolution = getSolution(newBoard, newStream, mode);
