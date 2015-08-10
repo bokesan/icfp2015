@@ -19,10 +19,26 @@ thought
 it might be easier to code advanced strategies in Haskell than in
 Java. It was no longer maintained after we decided to stay with Java.
 
+## Usage
+
+We call out Java version with a bash script that supports the flags
+from the task specification.
+
+There are some additional flags:
+
+TODO: describe them.
+
+
 ## Strategy
 
 Heuristics and limited brute-force search for moves that fill a
 complete row.
+
+### Phrases of Power
+
+We found only 8 phrases during the contest.
+
+TODO: describe strategy.
 
 ## Ressource use
 
