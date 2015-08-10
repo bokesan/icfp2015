@@ -42,9 +42,12 @@ public class Unit {
     
     public String toString() {
     	StringBuilder output = new StringBuilder();
-    	output.append("pivot: ").append(pivot.x).append("/").append(pivot.y);
+    	output.append("pivot: ").append(pivot);
+    	output.append(" members: ");
+    	String sep = " ";
     	for (Coordinate member : members) {
-    		output.append(" member: ").append(member.x).append("/").append(member.y);
+    		output.append(sep).append(member);
+    		sep = ", "; 
     	}
     	return output.toString();
     }
@@ -240,5 +243,13 @@ public class Unit {
             x = tx; y = ty; z = tz;
         }
         
+    }
+
+    public int getMaxDistFromPivot() {
+        int d = 0;
+        for (Coordinate c : members) {
+            d = Math.max(d, c.distanceTo(pivot));
+        }
+        return d;
     }
 }
