@@ -188,8 +188,9 @@ public class Boardstate {
             int y = coordinate.y;
             if (unitSize >= freeInRow(y)) {
                 boolean full = true;
-                for (int x = 0; x < width; x++) {
-                    if (!(isFilled(x, y) || inUnit(coordinates, x, y))) {
+                BitSet row = filled[y];
+                for (int x = row.nextClearBit(0); x < width; x = row.nextClearBit(x+1)) {
+                    if (!inUnit(coordinates, x, y)) {
                         full = false;
                         break;
                     }
