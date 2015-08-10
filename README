@@ -4,11 +4,4 @@ Team "A Storm of Minds"
    Jan Dreske jandreske@web.de
    Christoph Breitkopf chbreitkopf@gmail.com
 
-We wrote several implementations:
-
-src/
-        java player, requires Java 8, and ant for building.
-web/
-        html+javascript implementation for experimentation
-haskell/
-        Haskell implementation.
+Plase see README.md for more information.
