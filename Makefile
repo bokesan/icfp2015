@@ -11,5 +11,5 @@ clean:
 	ant clean
 
 srcdist:
-	mkdir -f dist
-	tar czf dist/srcdist.tar.gz README Makefile play_icfp2015 src
+	mkdir -p dist
+	tar czf dist/srcdist.tar.gz README README.md Makefile build.xml play_icfp2015 src web haskell lib
