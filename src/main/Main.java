@@ -43,6 +43,7 @@ public class Main {
     	    long levelAverage = 0;
     	    boolean broken = false;
     	    for (int level = 0; level <= maxlevel; level++) {
+    	        if (level >= 4) levelAverage += 10 * 1000; //some seconds safety margin for the wicked modes
     	        int seedcount = 0;
     	        long levelstart = System.currentTimeMillis();
                 List<Solution> solutions = new ArrayList<>();
