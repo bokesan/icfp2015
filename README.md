@@ -21,12 +21,19 @@ Java. It was no longer maintained after we decided to stay with Java.
 
 ## Usage
 
-We call out Java version with a bash script that supports the flags
+We call our Java version with a bash script that supports the flags
 from the task specification.
 
 There are some additional flags:
 
-TODO: describe them.
+    -dev true
+    	Enables developer mode, giving status updates on std_out and writing the results into a file in results folder. Default is false.
+    -stats true
+        Enables statistics creation, writes results/stats.txt with information about times, points per problem, number of seeds, used solvers and level runs. Default is false.
+    -trans "ei!"
+        writes the command sequence needed to perform the power phrase to std_out
+    -l 3
+    	Tells the solver up to which level of complexity the modes should get used, higher level means more complex, longer running solving modes - the maximum in the submission is level 4, minimum is 0. Default is maximum value.
 
 
 ## Strategy
@@ -36,7 +43,7 @@ complete row.
 
 ### Phrases of Power
 
-We found only 8 phrases during the contest.
+We found only 8 phrases during the contest, one of which was unusably long.
 
 TODO: describe strategy.
 
