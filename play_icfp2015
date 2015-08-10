@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # extract memory arg to pass to JVM
-megabytes=1024
+megabytes=1600
 for arg ; do
     if [ "$megabytes" = X ]; then
         megabytes=$arg
@@ -22,4 +22,4 @@ do
   THE_CLASSPATH=${THE_CLASSPATH}:${i}
 done
 
-java -ea -Xmx${megabytes}m -cp ${THE_CLASSPATH} main/Main "$@"
+java -Xmx${megabytes}m -cp ${THE_CLASSPATH} main/Main "$@"
