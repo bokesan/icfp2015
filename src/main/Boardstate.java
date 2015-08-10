@@ -87,6 +87,7 @@ public class Boardstate {
     public String toString() {
         StringBuilder output = new StringBuilder();
         for (int y = 0; y < height; y++) {
+            output.append(String.format("%3d ", y));
             //check whether its an odd or even row for indentation
             if (y % 2 == 1) output.append(" ");
             for (int x = 0; x < width; x++) {
@@ -96,7 +97,7 @@ public class Boardstate {
                     output.append("_ ");
                 }
             }
-            output.append("\n");
+            output.append(String.format(" %3d\n", y));
         }
         return output.toString();
     }
@@ -227,16 +228,16 @@ public class Boardstate {
     
     public EnumSet<Command> getFillingMoves(final int depth, final Unit unit, final Coordinate position) {
         EnumSet<Command> possible = EnumSet.noneOf(Command.class);
-        if (!(fillableRows(unit) && isValidPosition(unit, position))) {
+        if (!(fillableRows(unit, position, depth+1) && isValidPosition(unit, position))) {
             return possible;
         }
         ExecutorService exec = Main.getThreadPool();
         if (depth <= 0) {
-            if (doesFillRow(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
-            if (doesFillRow(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
-            if (doesFillRow(position.move(Command.EAST), unit)) possible.add(Command.EAST);
-            if (doesFillRow(position.move(Command.WEST), unit)) possible.add(Command.WEST);
-            if (doesFillRow(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
+            if (doesFillRow(position.move(Command.SOUTHEAST), unit)) {possible.add(Command.SOUTHEAST);return possible;}
+            if (doesFillRow(position.move(Command.SOUTHWEST), unit)) {possible.add(Command.SOUTHWEST);return possible;}
+            if (doesFillRow(position.move(Command.EAST), unit)) {possible.add(Command.EAST);return possible;}
+            if (doesFillRow(position.move(Command.WEST), unit)) {possible.add(Command.WEST);return possible;}
+            if (doesFillRow(position, unit.getRotatedUnit(1))) {possible.add(Command.CLOCKWISE);return possible;}
             if (doesFillRow(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
         } else if (exec != null) {
             Future<Boolean> fSE = exec.submit(new Callable<Boolean>() {
@@ -297,11 +298,17 @@ public class Boardstate {
     }
     
     /**
-     * Are there any rows this unit could possibly fill?
+     * Are there any rows this unit could possibly fill after moves?
      */
-    private boolean fillableRows(Unit unit) {
+    private boolean fillableRows(Unit unit, Coordinate pos, int moves) {
         int size = unit.size();
-        for (int y = height - 1; y >= 0; y--) {
+        int r = unit.getMaxDistFromPivot();
+        int rotMoves = Math.min(2, moves); // at most 2 rotations count
+        int downMoves = Math.max(0, moves - rotMoves);
+        int minRow = Math.max(0, pos.y - r * (rotMoves+1));
+        int maxRow = Math.min(height - 1, (r <= 1) ? (pos.y + moves + r) : (pos.y + r * (rotMoves+1) + downMoves));
+        
+        for (int y = maxRow; y >= minRow; y--) {
             if (size >= freeInRow(y)) {
                 return true;
             }

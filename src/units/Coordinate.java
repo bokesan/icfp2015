@@ -48,4 +48,10 @@ public class Coordinate implements Comparable<Coordinate> {
     public String toString() {
     	return "(" + x + "," + y + ")";
     }
+
+    public int distanceTo(Coordinate c) {
+        int dx = Math.abs(x - c.x);
+        int dy = Math.abs(y - c.y);
+        return Math.max(dx, dy);
+    }
 }
