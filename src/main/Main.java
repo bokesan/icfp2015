@@ -18,7 +18,7 @@ import java.util.List;
 
 public class Main {
 	
-	public static final String TAG = "five-past-twelve";
+	public static final String TAG = "alarm-a-llama";
 
     public static void main(String[] args) throws IOException {
     	long starttime = System.currentTimeMillis();
