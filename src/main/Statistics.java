@@ -16,12 +16,19 @@ public class Statistics {
 	int seeds, total_points = 0;
 	ProblemStats[] problemstats;
 	ModeStats[] modestats;
+	List<String> subHeaders = new ArrayList<>();
 
-	public void add(List<Solution> solutions) {
-		this.solutions.addAll(solutions);
+	public void set(List<Solution> solutions) {
+		this.solutions = new ArrayList<>(solutions);
 	}
 
-	public void writeStatsFile(String file, long duration) {
+    public void addSubSolutions(int level, int duration, List<Solution> solutions2) {
+        solutions = new ArrayList<>(solutions2);
+        processSolutions();
+        subHeaders.add(0, getHeader(level, duration));
+    }
+
+	public void writeStatsFile(String file, int duration) {
 		processSolutions();
 		
         PrintWriter writer;
@@ -30,7 +37,10 @@ public class Statistics {
         } catch (FileNotFoundException | UnsupportedEncodingException e) {
                 throw new RuntimeException(e);
         }
-        writer.println(getHeader(duration));
+        writer.println(getHeader(-1, duration));
+        for (String sub : subHeaders) {
+            writer.println(sub);
+        }
         writer.println();
         writer.println(getProbs());
         writer.println();
@@ -67,16 +77,23 @@ public class Statistics {
 		return builder.toString();
 	}
 
-	private String getHeader(long duration) {
+	private String getHeader(int level, int duration) {
 		StringBuilder builder = new StringBuilder();
 		builder.append(Main.TAG);
-		builder.append("   ").append(Math.ceil(duration / 1000)).append(" seconds");
+		if (level == -1) {
+		    builder.append(" finished");
+		} else {
+		    builder.append(" level: ").append(level);
+		}
+		builder.append("   ").append(duration).append(" seconds");
 		builder.append("   ").append(seeds).append(" seeds in ").append(problemstats.length).append(" problems");
 		builder.append("   ").append(total_points).append(" total points using ").append(modestats.length).append(" modes");
 		return builder.toString();
 	}
 
 	private void processSolutions() {
+	    total_points = 0;
+	    seeds = 0;
 		SortedSet<Integer> problems = new TreeSet<>();
 		SortedSet<PathFinder.Mode> modes = new TreeSet<>();
 		for (Solution solution : solutions) {
@@ -112,7 +129,6 @@ public class Statistics {
 			
 			//todo evaluate all the subsolutions which did not win, once they get along in the solution
 		}
-		
 	}
 	
 	private class ProblemStats {
@@ -129,6 +145,4 @@ public class Statistics {
 		int used = 0;
 		int points = 0;
 	}
-
-
 }
