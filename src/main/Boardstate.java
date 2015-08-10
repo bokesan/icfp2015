@@ -100,11 +100,7 @@ public class Boardstate {
 
     public boolean canSpawnUnit(Unit unit) {
         Coordinate pivotSpawnPoint = unit.getSpawnPoint(width);
-        return canPlaceUnit(pivotSpawnPoint, unit);
-    }
-
-    private boolean canPlaceUnit(Coordinate pivotPoint, Unit unit) {
-        return isValidPosition(unit, pivotPoint);
+        return isValidPosition(unit, pivotSpawnPoint);
     }
 
     public boolean canPlaceUnit(Coordinate pivotPoint, Unit unit, List<VisitedState> visited) {
@@ -165,8 +161,8 @@ public class Boardstate {
 
     public List<Command> getNonLockingMoves(Unit unit, Coordinate position, List<VisitedState> visited) {
         List<Command> possible = new ArrayList<>(6);
-        if (canPlaceUnit(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
-        if (canPlaceUnit(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
+        if (isValidPosition(unit, position.move(Command.SOUTHEAST))) possible.add(Command.SOUTHEAST);
+        if (isValidPosition(unit, position.move(Command.SOUTHWEST))) possible.add(Command.SOUTHWEST);
         if (canPlaceUnit(position.move(Command.EAST), unit, visited)) possible.add(Command.EAST);
         if (canPlaceUnit(position.move(Command.WEST), unit, visited)) possible.add(Command.WEST);
         if (canPlaceUnit(position, unit.getRotatedUnit(1), visited)) possible.add(Command.CLOCKWISE);
@@ -215,12 +211,12 @@ public class Boardstate {
     public List<Command> getLockingMoves(Unit unit, Coordinate position) {
         //we do not need to check visited locations, because we only take positions which are invalid, thus we cannot have been there
         List<Command> possible = new ArrayList<>(6);
-        if (!canPlaceUnit(position.move(Command.SOUTHEAST), unit)) possible.add(Command.SOUTHEAST);
-        if (!canPlaceUnit(position.move(Command.SOUTHWEST), unit)) possible.add(Command.SOUTHWEST);
-        if (!canPlaceUnit(position.move(Command.EAST), unit)) possible.add(Command.EAST);
-        if (!canPlaceUnit(position.move(Command.WEST), unit)) possible.add(Command.WEST);
-        if (!canPlaceUnit(position, unit.getRotatedUnit(1))) possible.add(Command.CLOCKWISE);
-        if (!canPlaceUnit(position, unit.getRotatedUnit(5))) possible.add(Command.COUNTERCLOCKWISE);
+        if (!isValidPosition(unit, position.move(Command.SOUTHEAST))) possible.add(Command.SOUTHEAST);
+        if (!isValidPosition(unit, position.move(Command.SOUTHWEST))) possible.add(Command.SOUTHWEST);
+        if (!isValidPosition(unit, position.move(Command.EAST))) possible.add(Command.EAST);
+        if (!isValidPosition(unit, position.move(Command.WEST))) possible.add(Command.WEST);
+        if (!isValidPosition(unit.getRotatedUnit(1), position)) possible.add(Command.CLOCKWISE);
+        if (!isValidPosition(unit.getRotatedUnit(5), position)) possible.add(Command.COUNTERCLOCKWISE);
         return possible;
     }
 
