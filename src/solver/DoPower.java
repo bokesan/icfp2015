@@ -1,6 +1,7 @@
 package solver;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import commands.Command;
@@ -25,18 +26,18 @@ public class DoPower {
 	}
 
 	public boolean doIfPossible(String string, int lookahead) {
-		return doIfPossible(Command.translate(string), lookahead);
+		return doIfPossible(new LinkedList<>(Command.translate(string)), lookahead);
 	}
 	
-	private boolean doIfPossible(List<Command> commands, int lookahead) {
+	private boolean doIfPossible(LinkedList<Command> commands, int lookahead) {
         if (canPerform(commands))  {
             doPerform(commands);
             return true;
         } else if (lookahead > 0) {
             for (Command command : board.getNonLockingMoves(currentUnit, position, visited)) {
-                commands.add(0, command);
+                commands.addFirst(command);
                 if (doIfPossible(commands, lookahead - 1)) return true;
-                commands.remove(0);
+                commands.removeFirst();
             }
         }
         return false;
