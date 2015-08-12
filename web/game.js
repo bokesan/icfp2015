@@ -285,6 +285,11 @@ function lockUnit() {
 }
 
 
+// set cell size based on board height
+function setSize() {
+    size = 500 / problem.height;
+}
+
 function loadProblem(f) {
     var reader = new FileReader();
     reader.onload = function(e) {
@@ -301,6 +306,7 @@ function loadProblem(f) {
         $('#solution').text('');
         solution = [];
         prevPositions = [];
+        setSize();
         drawMap();
         drawUnit();
     };
@@ -349,7 +355,7 @@ function drawHex(ctx) {
 
 function drawPivot(ctx) {
   ctx.save();
-  ctx.translate(size / 2, size / 2);
+  ctx.translate(size / 2, 2 * size / 3);
   ctx.fillStyle = PIVOT_COLOR;
   ctx.beginPath();
   ctx.arc(0, -size / 7, size / 4.5, 0, Math.PI*2, true); 
@@ -813,7 +819,16 @@ function runSolution() {
     }
 }
 
+var playSpeedFps = 30;
+var timer;
 
+function autoPlay() {
+    if (unit && numSpawned <= problem.sourceLength) {
+        computeMove();
+        redraw();
+        timer = setTimeout(autoPlay, 1000 / playSpeedFps);
+    }
+}
 
 $(document).ready(function(){
     $('#problem').live('change', function (e) {
@@ -844,10 +859,10 @@ $(document).ready(function(){
         redraw();
     });
     $('#btn_run').click(function () {
-        while (unit && numSpawned <= problem.sourceLength) {
-            computeMove();
-        }
-        redraw();
+        autoPlay();
+    });
+    $('#btn_pause').click(function () {
+        timer && clearTimeout(timer);
     });
 
     $('#sol').live('change', function (e) {
