@@ -463,7 +463,7 @@ function translateCell(cell, x, y) {
     if (y & 1) {
         // odd number of rows - have to correct for row "indentation"
         if (cell.y & 1) {
-            ;
+            x += 1;
         } else {
             x -= 1;
         }

@@ -170,6 +170,7 @@ validPos p prev u@(Unit _ ms) = all (validCell p) ms && u `notElem` prev
 translate :: Unit -> Int -> Int -> Unit
 translate (Unit p ms) xoffs yoffs =
   let tr (Cell x y) | odd yoffs && even y = Cell (x+xoffs-1) (y+yoffs)
+                    | odd yoffs           = Cell (x+xoffs+1) (y+yoffs)
                     | otherwise           = Cell (x+xoffs) (y+yoffs)
   in Unit (tr p) (sort (map tr ms))
 
