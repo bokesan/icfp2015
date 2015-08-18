@@ -16,7 +16,8 @@ import Data.Aeson
 import Data.Bits
 import Data.List
 import qualified Data.Vector as V
-import qualified Data.Set as S
+import qualified Data.HashSet as S
+import Data.Hashable
 
 data Move = MoveE | MoveSE | MoveSW | MoveW
           | RotCW | RotCCW
@@ -30,6 +31,9 @@ data Cell = Cell !Int !Int deriving (Eq, Ord)
 instance Show Cell where
   showsPrec _ (Cell x y) = showChar '(' . shows x . showChar ',' . shows y . showChar ')'
 
+instance Hashable Cell where
+  hashWithSalt s (Cell x y) = s `hashWithSalt` x `hashWithSalt` y
+
 -- abstract measure of cell distance, no particular unit
 cellDistance :: Cell -> Cell -> Int
 cellDistance (Cell x1 y1) (Cell x2 y2)
@@ -37,7 +41,7 @@ cellDistance (Cell x1 y1) (Cell x2 y2)
      where sq x = x * x
 
 evenRow :: Cell -> Bool
-evenRow (Cell _ y) = (y .&. 1) == 0
+evenRow (Cell _ y) = even y
 
 moveCell :: Cell -> Move -> Cell
 moveCell cell | evenRow cell = moveCellE cell
@@ -106,6 +110,9 @@ n `times` f | n <= 0    = id
 data Unit = Unit !Cell [Cell]
             deriving (Eq, Ord, Show)
 
+instance Hashable Unit where
+  hashWithSalt s (Unit p ms) = s `hashWithSalt` p `hashWithSalt` ms
+
 moveUnit :: Unit -> Move -> Unit
 moveUnit u RotCW  = rotateCW u
 moveUnit u RotCCW = rotateCCW u
@@ -131,14 +138,14 @@ data Problem = Problem {
                }
                deriving (Show)
 
-data Board = Board !Int !Int (V.Vector Integer) deriving (Show)
+data Board = Board !Int !Int !(V.Vector Integer) deriving (Show)
 
 isFilled :: Board -> Cell -> Bool
-isFilled (Board _ _ b) (Cell x y) = ((b V.! y) .&. (1 `shift` x)) /= 0
+isFilled (Board _ _ b) (Cell x y) = testBit (b V.! y) x
 
 setFilled :: Board -> Cell -> Board
 setFilled (Board w h b) (Cell x y) = Board w h (update setCell)
-  where setCell row = row .|. (1 `shift` x)
+  where setCell row = setBit row x
         update f = b V.// [(y, f (b V.! y))]
          
 fillCells :: Board -> [Cell] -> Board
@@ -202,8 +209,8 @@ validCell p cell@(Cell x y) =
     (x >= 0 && x < pWidth p && y >= 0 && y < pHeight p &&
      not (isFilled (pFilled p) cell))
 
-validPos :: Problem -> S.Set Unit -> Unit -> Bool
-validPos p prev u@(Unit _ ms) = all (validCell p) ms && u `S.notMember` prev
+validPos :: Problem -> S.HashSet Unit -> Unit -> Bool
+validPos p prev u@(Unit _ ms) = all (validCell p) ms && not (u `S.member` prev)
 
 translate :: Unit -> Int -> Int -> Unit
 translate (Unit p ms) xoffs yoffs =

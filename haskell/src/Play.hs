@@ -3,7 +3,7 @@ module Play (play) where
 import Rng
 import Board
 
-import qualified Data.Set as S
+import qualified Data.HashSet as S
 
 
 play :: Problem -> Integer -> [(Move,Unit)]
@@ -17,7 +17,7 @@ play problem seed = concat (h problem allUnits)
 moves :: [Move]
 moves = [MoveSW, MoveSE, MoveW, MoveE, RotCW, RotCCW]
 
-nextMove :: Problem -> S.Set Unit -> Unit -> (Move, Unit)
+nextMove :: Problem -> S.HashSet Unit -> Unit -> (Move, Unit)
 nextMove problem prev unit
   | not (validPos problem prev unit) = (Stop, unit)
   | atBottom problem unit = (Lock, unit)
@@ -61,7 +61,7 @@ spawn p u = let (min_x,max_x,min_y,_max_y) = dimensions u
             in translate u xoffs yoffs
 
 
-validMoves :: Problem -> S.Set Unit -> Unit -> [(Move, Unit)]
+validMoves :: Problem -> S.HashSet Unit -> Unit -> [(Move, Unit)]
 validMoves problem prev unit =
   [(m,u) | m <- moves, let u = moveUnit unit m, validPos problem prev u && u /= unit]
 
@@ -92,7 +92,7 @@ findPath problem dest src = case findPath' problem dest (S.singleton dest) S.emp
                               Left _ -> Nothing
                               Right ms -> Just ms
 
-findPath' :: Problem -> Unit -> S.Set Unit -> S.Set Unit -> Unit -> Either (S.Set Unit) [(Move,Unit)]
+findPath' :: Problem -> Unit -> S.HashSet Unit -> S.HashSet Unit -> Unit -> Either (S.HashSet Unit) [(Move,Unit)]
 findPath' problem dest blacklist prev curr
        | curr `S.member` blacklist = if curr == dest then Right [] else Left blacklist
        | otherwise    = go blacklist (validMoves problem prev curr)
