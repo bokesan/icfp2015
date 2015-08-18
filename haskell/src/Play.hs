@@ -39,10 +39,11 @@ units p seed = let rnds = take (pSourceLength p) (randoms seed)
 placeUnit :: Unit -> Problem -> ([(Move,Unit)], Problem)
 placeUnit unit problem = go (spawn problem unit)
    where
-      go u = h [] u
-             -- case allMoves problem u of
-             --   [] -> h [] u
-             --   (ms:_) -> let (_,u') = last ms in (ms ++ [(Lock, u')], lock problem u')
+      go u = -- h [] u
+             case findGoodMove problem u of
+                Nothing -> h [] u
+                Just [] -> ([(Lock, unit)], lock problem unit)
+                Just ms -> let (_,u') = last ms in (ms ++ [(Lock, u')], lock problem u')
       h prev u = case nextMove problem prev u of
                    (Stop, _) -> ([], problem) -- FIXME: how can this happen?
                    (Lock, u') -> ([(Lock,u')], lock problem u')
@@ -60,21 +61,9 @@ spawn p u = let (min_x,max_x,min_y,_max_y) = dimensions u
             in translate u xoffs yoffs
 
 
--- ==============================
-
-goto :: Problem -> Unit -> Unit -> [[(Move,Unit)]]
-goto problem src dest
-   | src `below` dest = []
-   | src == dest = [[]]
-   | otherwise   = [ (z:ms') | z@(_,src') <- sortBy (distTo dest) (validMoves problem [] src),
-                               ms' <- goto problem src' dest ]
-
-distTo :: Unit -> (Move,Unit) -> (Move,Unit) -> Ordering
-distTo dest (_,u1) (_,u2) = compare (distance dest u1) (distance dest u2)
-
 validMoves :: Problem -> [Unit] -> Unit -> [(Move, Unit)]
 validMoves problem prev unit =
-  [(m,u) | m <- moves, let u = move unit m, validPos problem prev u && u /= unit]
+  [(m,u) | m <- moves, let u = moveUnit unit m, validPos problem prev u && u /= unit]
 
 -- ===============================
 
@@ -82,6 +71,11 @@ validMoves problem prev unit =
 --
 -- no idea what to do - just start from lower left
 destinations :: Problem -> Unit -> [Unit]
+destinations problem unit = [ u' | dy <- [pHeight problem - 1, (pHeight problem - 2) .. 0],
+                                   dx <- [(-(pWidth problem - 1)) .. pWidth problem - 1],
+                                   u <- rotations unit, let u' = translate u dx dy,
+                                   validPos problem [] u' ]
+{-
 destinations problem unit = [ u' | p <- ps, u <- rotations unit, let u' = tr u p,
                                    validPos problem [] u' ]
   where
@@ -90,7 +84,33 @@ destinations problem unit = [ u' | p <- ps, u <- rotations unit, let u' = tr u p
     cmp (Cell x1 y1) (Cell x2 y2) = case compare y2 y1 of
                                       EQ -> compare x1 x2
                                       r  -> r
+-}
 
--- now, generate all moves to all destinations...
-allMoves :: Problem -> Unit -> [[(Move,Unit)]]
-allMoves problem unit = concat [goto problem unit dest | dest <- destinations problem unit]
+
+
+-- ===============================
+
+
+findGoodMove :: Problem -> Unit -> Maybe [(Move,Unit)]
+findGoodMove problem unit = go (destinations problem unit)
+  where
+    go [] = Nothing
+    go (d:ds) = case findPath problem d unit of
+                  Nothing -> go ds
+                  x -> x
+
+findPath :: Problem -> Unit -> Unit -> Maybe [(Move,Unit)]
+findPath problem dest src = case findPath' problem dest [] [] src of
+                              Left _ -> Nothing
+                              Right ms -> Just ms
+
+findPath' :: Problem -> Unit -> [Unit] -> [Unit] -> Unit -> Either [Unit] [(Move,Unit)]
+findPath' problem dest blacklist prev curr
+       | curr == dest = Right []
+       | curr `elem` blacklist = Left blacklist
+       | otherwise    = go blacklist (validMoves problem (prev++blacklist) curr)
+  where
+     go dead [] = Left dead
+     go dead ((m,u):ms) = case findPath' problem dest dead (curr:prev) u of
+                            Right mvs -> Right ((m,u):mvs)
+                            Left dead' -> go (u:dead') ms

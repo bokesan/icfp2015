@@ -3,9 +3,10 @@ module Board (
        Move(..),
        Cell(..),
        Unit(..), ppUnit,
-       Problem(..), cells,
+       Problem(pWidth, pHeight, pUnits, pSourceLength, pSourceSeeds, pId),
+       cells, ppBoard, ppBoardWithUnit,
        Solution(..),
-       move, validPos, dimensions, translate, below, distance,
+       moveUnit, validPos, dimensions, translate, below, distance,
        lock, atBottom, rotations
   ) where
 
@@ -14,6 +15,7 @@ import qualified Data.Text.Lazy as T
 import Data.Aeson
 import Data.Bits
 import Data.List
+import qualified Data.Vector as V
 
 data Move = MoveE | MoveSE | MoveSW | MoveW
           | RotCW | RotCCW
@@ -30,7 +32,7 @@ instance Show Cell where
 -- abstract measure of cell distance, no particular unit
 cellDistance :: Cell -> Cell -> Int
 cellDistance (Cell x1 y1) (Cell x2 y2)
-   = sq (x2-x1) + sq (x2-y1)
+   = sq (x2-x1) + sq (y2-y1)
      where sq x = x * x
 
 evenRow :: Cell -> Bool
@@ -90,26 +92,47 @@ n `times` f | n <= 0    = id
 data Unit = Unit !Cell [Cell]
             deriving (Eq, Ord, Show)
 
-move :: Unit -> Move -> Unit
-move u RotCW  = rotateCW u
-move u RotCCW = rotateCCW u
-move (Unit p ms) move = Unit (moveCell p move) (sort [moveCell c move | c <- ms])
+moveUnit :: Unit -> Move -> Unit
+moveUnit u RotCW  = rotateCW u
+moveUnit u RotCCW = rotateCCW u
+moveUnit (Unit p ms) move = Unit (moveCell p move) (sort [moveCell c move | c <- ms])
 
 dimensions :: Unit -> (Int, Int, Int, Int)
 dimensions (Unit _ ms) = let xs = [x | Cell x _ <- ms]
                              ys = [y | Cell _ y <- ms]
                          in (minimum xs, maximum xs, minimum ys, maximum ys)
 
+dimensionsWithPivot :: Unit -> (Int, Int, Int, Int)
+dimensionsWithPivot u@(Unit (Cell px py) _) =
+    let (minX, maxX, minY, maxY) = dimensions u
+    in (min minX px, max maxX px, min minY py, max maxY py)
+                            
 data Problem = Problem {
                  pId :: !Int,
                  pUnits :: [Unit],
                  pWidth, pHeight :: !Int,
-                 pFilled :: [Cell],
+                 pFilled :: !Board,
                  pSourceLength :: !Int,
                  pSourceSeeds :: [Integer]
                }
                deriving (Show)
 
+data Board = Board !Int !Int (V.Vector Integer) deriving (Show)
+
+isFilled :: Board -> Cell -> Bool
+isFilled (Board _ _ b) (Cell x y) = ((b V.! y) .&. (1 `shift` x)) /= 0
+
+setFilled :: Board -> Cell -> Board
+setFilled (Board w h b) (Cell x y) = Board w h (update f b y)
+  where f row = row .|. (1 `shift` x)
+        update f b y = b V.// [(y, f (b V.! y))]
+         
+fillCells :: Board -> [Cell] -> Board
+fillCells b cs = foldl' setFilled b cs
+
+makeBoard :: Int -> Int -> Board
+makeBoard w h = Board w h (V.replicate h 0)
+         
 data Solution = Solution {
                   sProblemId :: !Int,
                   sSeed :: !Integer,
@@ -148,7 +171,8 @@ instance FromJSON Problem where
                               len <- v .: "sourceLength"
                               seeds <- v .: "sourceSeeds"
                               return (Problem{pId=i, pUnits=u, pWidth=w, pHeight=h,
-                                              pFilled=f, pSourceLength=len,
+                                              pFilled = fillCells (makeBoard w h) f,
+                                              pSourceLength=len,
                                               pSourceSeeds=seeds})
     parseJSON _ = mzero
 
@@ -162,48 +186,81 @@ distance (Unit p1 _) (Unit p2 _) = cellDistance p1 p2
 validCell :: Problem -> Cell -> Bool
 validCell p cell@(Cell x y) =
     (x >= 0 && x < pWidth p && y >= 0 && y < pHeight p &&
-     cell `notElem` pFilled p)
+     not (isFilled (pFilled p) cell))
 
 validPos :: Problem -> [Unit] -> Unit -> Bool
 validPos p prev u@(Unit _ ms) = all (validCell p) ms && u `notElem` prev
 
 translate :: Unit -> Int -> Int -> Unit
 translate (Unit p ms) xoffs yoffs =
-  let tr (Cell x y) | odd yoffs && even y = Cell (x+xoffs-1) (y+yoffs)
-                    | otherwise           = Cell (x+xoffs) (y+yoffs)
+  let tr (Cell x y) = case (odd yoffs, odd y) of
+                        (False, _)    -> Cell (x+xoffs)   (y+yoffs)
+                        (True, False) -> Cell (x+xoffs-1) (y+yoffs)
+                        (True, True)  -> Cell (x+xoffs+1) (y+yoffs)
   in Unit (tr p) (sort (map tr ms))
-
+ 
 lock :: Problem -> Unit -> Problem
-lock problem (Unit _ ms) = problem{pFilled = removeFullRows problem (ms ++ pFilled problem)}
+lock problem (Unit _ ms) = problem{pFilled = removeFullRows (fillCells (pFilled problem) ms)}
 
 atBottom :: Problem -> Unit -> Bool
 atBottom problem (Unit _ ms) =
   any (>= lastRow) [y | (Cell _ y) <- ms]
   where lastRow = pHeight problem - 1
 
-
-removeFullRows :: Problem -> [Cell] -> [Cell]
-removeFullRows p cs1 = foldr rem cs1 [0 .. pHeight p - 1]
+isFullRow :: Board -> Int -> Bool
+isFullRow (Board w _ cs) r = (cs V.! r) == (shift 1 w - 1)
+  
+removeFullRows :: Board -> Board
+removeFullRows b@(Board w h _) = foldr remove b [0 .. h - 1]
   where
-    rem row cs | isFullRow row cs = remRow row cs
-               | otherwise = cs
-    w = pWidth p
-    isFullRow row cs = w == length [c | Cell c r <- cs, r == row]
-    remRow row cs = [Cell c (if r < row then r+1 else r) | Cell c r <- cs, r /= row]
+    remove row cs | isFullRow cs row = remRow row cs
+                  | otherwise = cs
+    remRow row (Board w h cs) = Board w h (V.cons 0 (V.take row cs V.++ V.drop (row + 1) cs))
 
 rotations :: Unit -> [Unit]
-rotations u = [ (n `times` rotateCW) u | n <- [0..5] ]
+rotations u = nub [ (n `times` rotateCW) u | n <- [0..5] ]
 
 cells :: Problem -> [Cell]
 cells problem = [ Cell x y | x <- [0..lastCol], y <- [0..lastRow] ]
   where lastCol = pWidth problem - 1
         lastRow = pHeight problem - 1
 
-ppUnit :: Unit -> String
-ppUnit u@(Unit _ ms) =
-  let (minX, maxX, minY, maxY) = dimensions u
-      row y = concat [cell x y | x <- [minX..maxX]]
-      cell x y | Cell x y `elem` ms = "#"
-               | otherwise = " "
+
+cEMPTY, cFILLED, cUNIT, cPIVOT, cPIVOT_ON_UNIT, cPIVOT_ON_FILLED :: Char
+cEMPTY         = '·'
+cFILLED        = '#'
+cUNIT          = '*'
+cPIVOT_ON_UNIT = '@'
+cPIVOT_ON_FILLED = '§'
+cPIVOT         = '•'
+
+                  
+ppUnit :: Unit -> T.Text
+ppUnit u@(Unit p ms) =
+  let (minX, maxX, minY, maxY) = dimensionsWithPivot u
+      row y = let r = intersperse ' ' [cell (Cell x y) | x <- [minX..maxX]]
+              in if odd y then ' ' : r else r
+      cell c | c `elem` ms = if c == p then cPIVOT_ON_UNIT else cUNIT
+             | otherwise   = if c == p then cPIVOT else cEMPTY
   in
-     concat [row n ++ "\n" | n <- [minY..maxY]]
+     T.concat (intersperse "\n" [T.pack (row n) | n <- [minY..maxY]])
+
+ppBoard :: Problem -> T.Text
+ppBoard p = ppBoardWithUnit p invisibleUnit
+  where invisibleUnit = Unit (Cell (-1) (-1)) []
+
+ppBoardWithUnit :: Problem -> Unit -> T.Text
+ppBoardWithUnit problem (Unit pivot members) =
+    T.concat (intersperse "\n" [T.pack (alignedRow y) | y <- [0 .. h-1]])
+    where
+       w = pWidth problem
+       h = pHeight problem
+       filled = pFilled problem
+       alignedRow y | even y    = row y
+                    | otherwise = ' ' : row y
+       row y = intersperse ' ' [cell (Cell x y) | x <- [0 .. w-1]]
+               
+       cell c | isFilled filled c = if c == pivot then cPIVOT_ON_FILLED else cFILLED
+              | c `elem` members  = if c == pivot then cPIVOT_ON_UNIT else cUNIT
+              | c == pivot        = cPIVOT
+              | otherwise         = cEMPTY

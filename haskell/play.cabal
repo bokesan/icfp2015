@@ -4,7 +4,7 @@ synopsis:            ICFP Contest 2015 Player
 description:         Please see README.md
 homepage:            http://github.com/bokesan/icfp2015
 license:             BSD3
-license-file:        LICENSE
+-- license-file:        LICENSE
 author:              Christoph Breitkopf
 maintainer:          chbreitkopf@gmail.com
 -- copyright:           
@@ -18,8 +18,33 @@ executable play
   main-is:             Main.hs
   -- ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
   ghc-options:         -Wall
-  build-depends:       base, bytestring, text, aeson
+  build-depends:       base, bytestring, text, aeson, vector
   default-language:    Haskell2010
+
+executable play-prof
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  ghc-options:         -Wall -O -fprof-auto "-with-rtsopts=-p"
+  build-depends:       base, bytestring, text, aeson, vector
+  default-language:    Haskell2010
+  
+test-suite Tests
+  type:            exitcode-stdio-1.0
+  x-uses-tf:       true
+  build-depends:   
+                   base, bytestring, text, aeson, vector, HUnit >= 1.2,
+                   QuickCheck >= 2.4,
+                   test-framework >= 0.4.1,
+                   test-framework-quickcheck2,
+                   test-framework-hunit
+  ghc-options:     -Wall -rtsopts
+  hs-source-dirs:  src, test
+  -- The following lines trigger a bug in Hackage.  Uncommment for compilation on GHC 6.
+  -- if impl(ghc >= 7.0.0)
+  --      default-language: Haskell2010
+  default-language: Haskell2010
+  main-is:         Tests.hs
+
 
 source-repository head
   type:     git
