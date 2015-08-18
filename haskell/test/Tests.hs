@@ -2,6 +2,7 @@ module Main where
 
 import Board
 import Rng
+import Chant
 
 
 import Test.QuickCheck
@@ -54,6 +55,8 @@ tests = [
                 -- check random number sequence matches problem specification
                 testCase "random" (assertBool "rng ok"
                                      ([0,24107,16552,12125,9427,13152,21440,3383,6873,16117]
-                                      `isPrefixOf` randoms 17))
+                                      `isPrefixOf` randoms 17)),
+
+                testCase "chant" (chant ["Ei!"] [RotCW, MoveE, MoveSW, MoveW] @?= "dEi!")
                 ]
        ]
