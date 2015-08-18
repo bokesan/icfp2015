@@ -16,6 +16,7 @@ import Data.Aeson
 import Data.Bits
 import Data.List
 import qualified Data.Vector as V
+import qualified Data.Set as S
 
 data Move = MoveE | MoveSE | MoveSW | MoveW
           | RotCW | RotCCW
@@ -48,6 +49,7 @@ moveCellE (Cell x y) move = case move of
                               MoveSE -> Cell x (y+1)
                               MoveSW -> Cell (x-1) (y+1)
                               MoveW  -> Cell (x-1) y
+                              _ -> undefined
 
 moveCellO :: Cell -> Move -> Cell
 moveCellO (Cell x y) move = case move of
@@ -55,32 +57,44 @@ moveCellO (Cell x y) move = case move of
                               MoveSE -> Cell (x+1) (y+1)
                               MoveSW -> Cell x (y+1)
                               MoveW  -> Cell (x-1) y
+                              _ -> undefined
 
-data Cube = Cube !Int !Int !Int
+type Cube = (Int,Int,Int)
 
 cubeToOffset :: Cube -> Cell
-cubeToOffset (Cube x _ z) = Cell (x + ((z - (z .&. 1)) `div` 2)) z
+cubeToOffset (x,_,z) = Cell (x + ((z - (z .&. 1)) `div` 2)) z
 
 offsetToCube :: Cell -> Cube
 offsetToCube (Cell cx cy) =
   let x = cx - ((cy - (cy .&. 1)) `div` 2)
       z = cy
       y = (-x) - z
-  in Cube x y z
+  in (x,y,z)
 
 rotCellCW :: Cell -> Cell -> Cell
 rotCellCW center point =
-    let (Cube ccx ccy ccz) = offsetToCube center
-        (Cube cpx cpy cpz) = offsetToCube point
-        (Cube dx dy dz) = Cube (cpx - ccx) (cpy - ccy) (cpz - ccz)
-        (Cube rx ry rz) = Cube (-dz) (-dx) (-dy)
-        p = Cube (ccx + rx) (ccy + ry) (ccz + rz)
+    let (ccx, ccy, ccz) = offsetToCube center
+        (cpx, cpy, cpz) = offsetToCube point
+        dx = cpx - ccx
+        dy = cpy - ccy
+        dz = cpz - ccz
+        p = (ccx - dz, ccy - dx, ccz - dy)
+    in cubeToOffset p
+
+rotCellCCW :: Cell -> Cell -> Cell
+rotCellCCW center point =
+    let (ccx, ccy, ccz) = offsetToCube center
+        (cpx, cpy, cpz) = offsetToCube point
+        dx = cpx - ccx
+        dy = cpy - ccy
+        dz = cpz - ccz
+        p = (ccx - dy, ccy - dz, ccz - dx)
     in cubeToOffset p
 
 
 rotateCW, rotateCCW :: Unit -> Unit
-rotateCW (Unit pivot ms) = Unit pivot (sort [rotCellCW pivot cell | cell <- ms])
-rotateCCW = 5 `times` rotateCW
+rotateCW  (Unit pivot ms) = Unit pivot (sort [rotCellCW pivot cell | cell <- ms])
+rotateCCW (Unit pivot ms) = Unit pivot (sort [rotCellCCW pivot cell | cell <- ms])
 
 times :: Int -> (a -> a) -> a -> a
 n `times` f | n <= 0    = id
@@ -123,9 +137,9 @@ isFilled :: Board -> Cell -> Bool
 isFilled (Board _ _ b) (Cell x y) = ((b V.! y) .&. (1 `shift` x)) /= 0
 
 setFilled :: Board -> Cell -> Board
-setFilled (Board w h b) (Cell x y) = Board w h (update f b y)
-  where f row = row .|. (1 `shift` x)
-        update f b y = b V.// [(y, f (b V.! y))]
+setFilled (Board w h b) (Cell x y) = Board w h (update setCell)
+  where setCell row = row .|. (1 `shift` x)
+        update f = b V.// [(y, f (b V.! y))]
          
 fillCells :: Board -> [Cell] -> Board
 fillCells b cs = foldl' setFilled b cs
@@ -188,16 +202,17 @@ validCell p cell@(Cell x y) =
     (x >= 0 && x < pWidth p && y >= 0 && y < pHeight p &&
      not (isFilled (pFilled p) cell))
 
-validPos :: Problem -> [Unit] -> Unit -> Bool
-validPos p prev u@(Unit _ ms) = all (validCell p) ms && u `notElem` prev
+validPos :: Problem -> S.Set Unit -> Unit -> Bool
+validPos p prev u@(Unit _ ms) = all (validCell p) ms && u `S.notMember` prev
 
 translate :: Unit -> Int -> Int -> Unit
 translate (Unit p ms) xoffs yoffs =
-  let tr (Cell x y) = case (odd yoffs, odd y) of
-                        (False, _)    -> Cell (x+xoffs)   (y+yoffs)
-                        (True, False) -> Cell (x+xoffs-1) (y+yoffs)
-                        (True, True)  -> Cell (x+xoffs+1) (y+yoffs)
-  in Unit (tr p) (sort (map tr ms))
+  let tr  (Cell x y) = Cell (x+xoffs) (y+yoffs)
+      tr' (Cell x y) | odd y     = Cell (x+xoffs+1) (y+yoffs)
+                     | otherwise = Cell (x+xoffs-1) (y+yoffs)
+  in
+     if even yoffs then Unit (tr p) (map tr ms)
+                   else Unit (tr' p) (sort (map tr' ms))
  
 lock :: Problem -> Unit -> Problem
 lock problem (Unit _ ms) = problem{pFilled = removeFullRows (fillCells (pFilled problem) ms)}
@@ -211,7 +226,7 @@ isFullRow :: Board -> Int -> Bool
 isFullRow (Board w _ cs) r = (cs V.! r) == (shift 1 w - 1)
   
 removeFullRows :: Board -> Board
-removeFullRows b@(Board w h _) = foldr remove b [0 .. h - 1]
+removeFullRows b@(Board _ height _) = foldr remove b [0 .. height - 1]
   where
     remove row cs | isFullRow cs row = remRow row cs
                   | otherwise = cs

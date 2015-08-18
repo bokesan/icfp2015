@@ -3,7 +3,7 @@ module Play (play) where
 import Rng
 import Board
 
-import Data.List
+import qualified Data.Set as S
 
 
 play :: Problem -> Integer -> [(Move,Unit)]
@@ -17,7 +17,7 @@ play problem seed = concat (h problem allUnits)
 moves :: [Move]
 moves = [MoveSW, MoveSE, MoveW, MoveE, RotCW, RotCCW]
 
-nextMove :: Problem -> [Unit] -> Unit -> (Move, Unit)
+nextMove :: Problem -> S.Set Unit -> Unit -> (Move, Unit)
 nextMove problem prev unit
   | not (validPos problem prev unit) = (Stop, unit)
   | atBottom problem unit = (Lock, unit)
@@ -41,13 +41,13 @@ placeUnit unit problem = go (spawn problem unit)
    where
       go u = -- h [] u
              case findGoodMove problem u of
-                Nothing -> h [] u
+                Nothing -> h S.empty u
                 Just [] -> ([(Lock, unit)], lock problem unit)
                 Just ms -> let (_,u') = last ms in (ms ++ [(Lock, u')], lock problem u')
       h prev u = case nextMove problem prev u of
                    (Stop, _) -> ([], problem) -- FIXME: how can this happen?
                    (Lock, u') -> ([(Lock,u')], lock problem u')
-                   (m,u') -> case h (u:prev) u' of
+                   (m,u') -> case h (S.insert u prev) u' of
                                (ms,p) -> ((m,u'):ms, p)
 
 
@@ -61,7 +61,7 @@ spawn p u = let (min_x,max_x,min_y,_max_y) = dimensions u
             in translate u xoffs yoffs
 
 
-validMoves :: Problem -> [Unit] -> Unit -> [(Move, Unit)]
+validMoves :: Problem -> S.Set Unit -> Unit -> [(Move, Unit)]
 validMoves problem prev unit =
   [(m,u) | m <- moves, let u = moveUnit unit m, validPos problem prev u && u /= unit]
 
@@ -74,19 +74,7 @@ destinations :: Problem -> Unit -> [Unit]
 destinations problem unit = [ u' | dy <- [pHeight problem - 1, (pHeight problem - 2) .. 0],
                                    dx <- [(-(pWidth problem - 1)) .. pWidth problem - 1],
                                    u <- rotations unit, let u' = translate u dx dy,
-                                   validPos problem [] u' ]
-{-
-destinations problem unit = [ u' | p <- ps, u <- rotations unit, let u' = tr u p,
-                                   validPos problem [] u' ]
-  where
-    tr u@(Unit (Cell px py) _) (Cell x y) = let dx = x - px; dy = y - py in translate u dx dy
-    ps = sortBy cmp (cells problem)
-    cmp (Cell x1 y1) (Cell x2 y2) = case compare y2 y1 of
-                                      EQ -> compare x1 x2
-                                      r  -> r
--}
-
-
+                                   validPos problem S.empty u' ]
 
 -- ===============================
 
@@ -100,17 +88,16 @@ findGoodMove problem unit = go (destinations problem unit)
                   x -> x
 
 findPath :: Problem -> Unit -> Unit -> Maybe [(Move,Unit)]
-findPath problem dest src = case findPath' problem dest [] [] src of
+findPath problem dest src = case findPath' problem dest (S.singleton dest) S.empty src of
                               Left _ -> Nothing
                               Right ms -> Just ms
 
-findPath' :: Problem -> Unit -> [Unit] -> [Unit] -> Unit -> Either [Unit] [(Move,Unit)]
+findPath' :: Problem -> Unit -> S.Set Unit -> S.Set Unit -> Unit -> Either (S.Set Unit) [(Move,Unit)]
 findPath' problem dest blacklist prev curr
-       | curr == dest = Right []
-       | curr `elem` blacklist = Left blacklist
-       | otherwise    = go blacklist (validMoves problem (prev++blacklist) curr)
+       | curr `S.member` blacklist = if curr == dest then Right [] else Left blacklist
+       | otherwise    = go blacklist (validMoves problem prev curr)
   where
      go dead [] = Left dead
-     go dead ((m,u):ms) = case findPath' problem dest dead (curr:prev) u of
+     go dead ((m,u):ms) = case findPath' problem dest dead (S.insert curr prev) u of
                             Right mvs -> Right ((m,u):mvs)
-                            Left dead' -> go (u:dead') ms
+                            Left dead' -> go (S.insert u dead') ms
