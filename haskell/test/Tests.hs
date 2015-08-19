@@ -21,7 +21,7 @@ instance Arbitrary Cell where
 instance Arbitrary Unit where
     arbitrary = do pivot <- arbitrary
                    members <- arbitrary
-                   return $ Unit pivot (sort members)
+                   return $ makeUnit pivot members
 
 movesCancel :: Move -> Move -> Unit -> Bool
 movesCancel m1 m2 unit = moveUnit (moveUnit unit m1) m2 == unit
@@ -49,8 +49,8 @@ tests = [
                 testProperty "translate" translateBF
                 ],
         testGroup "Point tests Unit" [
-                testCase "simpleMove" ((moveUnit (Unit (Cell 1 2) [Cell 4 5]) MoveE)
-                                       @?= (Unit (Cell 2 2) [Cell 5 5])),
+                testCase "simpleMove" ((moveUnit (makeUnit (Cell 1 2) [Cell 4 5]) MoveE)
+                                       @?= (makeUnit (Cell 2 2) [Cell 5 5])),
 
                 -- check random number sequence matches problem specification
                 testCase "random" (assertBool "rng ok"

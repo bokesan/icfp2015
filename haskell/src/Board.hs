@@ -2,7 +2,7 @@
 module Board (
        Move(..),
        Cell(..),
-       Unit(..), ppUnit,
+       Unit, makeUnit, ppUnit,
        Problem(pWidth, pHeight, pUnits, pSourceLength, pSourceSeeds, pId),
        cells, ppBoard, ppBoardWithUnit,
        Solution(..),
@@ -16,6 +16,7 @@ import Data.Aeson
 import Data.Bits
 import Data.List
 import qualified Data.Vector as V
+import qualified Data.Vector.Generic.Mutable as MV
 import qualified Data.HashSet as S
 import Data.Hashable
 
@@ -34,34 +35,16 @@ instance Show Cell where
 instance Hashable Cell where
   hashWithSalt s (Cell x y) = s `hashWithSalt` x `hashWithSalt` y
 
+cellX, cellY :: Cell -> Int
+cellX (Cell x _) = x
+cellY (Cell _ y) = y
+
 -- abstract measure of cell distance, no particular unit
 cellDistance :: Cell -> Cell -> Int
 cellDistance (Cell x1 y1) (Cell x2 y2)
    = sq (x2-x1) + sq (y2-y1)
      where sq x = x * x
 
-evenRow :: Cell -> Bool
-evenRow (Cell _ y) = even y
-
-moveCell :: Cell -> Move -> Cell
-moveCell cell | evenRow cell = moveCellE cell
-              | otherwise    = moveCellO cell
-
-moveCellE :: Cell -> Move -> Cell
-moveCellE (Cell x y) move = case move of
-                              MoveE  -> Cell (x+1) y
-                              MoveSE -> Cell x (y+1)
-                              MoveSW -> Cell (x-1) (y+1)
-                              MoveW  -> Cell (x-1) y
-                              _ -> undefined
-
-moveCellO :: Cell -> Move -> Cell
-moveCellO (Cell x y) move = case move of
-                              MoveE  -> Cell (x+1) y
-                              MoveSE -> Cell (x+1) (y+1)
-                              MoveSW -> Cell x (y+1)
-                              MoveW  -> Cell (x-1) y
-                              _ -> undefined
 
 type Cube = (Int,Int,Int)
 
@@ -97,8 +80,9 @@ rotCellCCW center point =
 
 
 rotateCW, rotateCCW :: Unit -> Unit
-rotateCW  (Unit pivot ms) = Unit pivot (sort [rotCellCW pivot cell | cell <- ms])
-rotateCCW (Unit pivot ms) = Unit pivot (sort [rotCellCCW pivot cell | cell <- ms])
+rotateCW  u = uMapMembers (rotCellCW (uPivot u)) u
+rotateCCW u = uMapMembers (rotCellCCW (uPivot u)) u
+
 
 times :: Int -> (a -> a) -> a -> a
 n `times` f | n <= 0    = id
@@ -107,25 +91,123 @@ n `times` f | n <= 0    = id
 
 
 -- members are ordered
-data Unit = Unit !Cell [Cell]
+data Unit = Unit1 !Cell !Cell
+          | Unit2 !Cell !Cell !Cell
+          | Unit3 !Cell !Cell !Cell !Cell
+          | Unit !Cell [Cell]
             deriving (Eq, Ord, Show)
 
+uPivot :: Unit -> Cell
+uPivot (Unit p _) = p
+uPivot (Unit1 p _) = p
+uPivot (Unit2 p _ _) = p
+uPivot (Unit3 p _ _ _) = p
+
+uMembers :: Unit -> [Cell]
+uMembers (Unit1 _ m) = [m]
+uMembers (Unit2 _ m1 m2) = [m1, m2]
+uMembers (Unit3 _ m1 m2 m3) = [m1, m2, m3]
+uMembers (Unit _ ms) = ms
+
+uMap, uMap', uMapMembers :: (Cell -> Cell) -> Unit -> Unit
+uMapMembers f (Unit1 p m1) = Unit1 p (f m1)
+uMapMembers f (Unit2 p m1 m2) = let m1' = f m1
+                                    m2' = f m2
+                                in if m1' <= m2' then Unit2 p m1' m2'
+                                                 else Unit2 p m2' m1'
+uMapMembers f (Unit3 p m1 m2 m3)
+   = let a = f m1
+         b = f m2
+         c = f m3
+     in if a <= b then
+           -- a <= b --> a b c - a c b - c a b
+           if b <= c then
+               Unit3 p a b c
+           else if a <= c then
+               Unit3 p a c b
+           else
+               Unit3 p c a b
+        else
+           -- a > b  --> b a c - b c a - c b a
+           if c <= b then
+               Unit3 p c b a
+           else if a <= c then
+               Unit3 p b a c
+           else
+               Unit3 p b c a
+uMapMembers f (Unit p ms) = Unit p (sort (map f ms))
+
+uMap f (Unit1 p m1) = Unit1 (f p) (f m1)
+uMap f (Unit2 p m1 m2) = let m1' = f m1
+                             m2' = f m2
+                         in if m1' <= m2' then Unit2 (f p) m1' m2'
+                                          else Unit2 (f p) m2' m1'
+uMap f (Unit3 p m1 m2 m3)
+   = let a = f m1
+         b = f m2
+         c = f m3
+     in if a <= b then
+           -- a <= b --> a b c - a c b - c a b
+           if b <= c then
+               Unit3 (f p) a b c
+           else if a <= c then
+               Unit3 (f p) a c b
+           else
+               Unit3 (f p) c a b
+        else
+           -- a > b  --> b a c - b c a - c b a
+           if c <= b then
+               Unit3 (f p) c b a
+           else if a <= c then
+               Unit3 (f p) b a c
+           else
+               Unit3 (f p) b c a
+uMap f (Unit p ms) = Unit (f p) (sort (map f ms))
+
+uMap' f (Unit1 p m1)    = Unit1 (f p) (f m1)
+uMap' f (Unit2 p m1 m2) = Unit2 (f p) (f m1) (f m2)
+uMap' f (Unit3 p m1 m2 m3) = Unit3 (f p) (f m1) (f m2) (f m3)
+uMap' f (Unit p ms)     = Unit (f p) (map f ms)
+
+            
 instance Hashable Unit where
+  hashWithSalt s (Unit1 p m1) = s `hashWithSalt` p `hashWithSalt` m1
+  hashWithSalt s (Unit2 p m1 m2) = s `hashWithSalt` p `hashWithSalt` m1 `hashWithSalt` m2
+  hashWithSalt s (Unit3 p m1 m2 m3) = s `hashWithSalt` p `hashWithSalt` m1 `hashWithSalt` m2 `hashWithSalt` m3
   hashWithSalt s (Unit p ms) = s `hashWithSalt` p `hashWithSalt` ms
+
+makeUnit, makeUnit' :: Cell -> [Cell] -> Unit
+makeUnit pivot members = case sort members of
+                            [m1] -> Unit1 pivot m1
+                            [m1,m2] -> Unit2 pivot m1 m2
+                            [m1,m2,m3] -> Unit3 pivot m1 m2 m3
+                            ms -> Unit pivot ms
+
+makeUnit' pivot members = case members of
+                            [m1] -> Unit1 pivot m1
+                            [m1,m2] -> Unit2 pivot m1 m2
+                            [m1,m2,m3] -> Unit3 pivot m1 m2 m3
+                            ms -> Unit pivot ms
 
 moveUnit :: Unit -> Move -> Unit
 moveUnit u RotCW  = rotateCW u
 moveUnit u RotCCW = rotateCCW u
-moveUnit (Unit p ms) move = Unit (moveCell p move) (sort [moveCell c move | c <- ms])
-
+moveUnit u MoveW = uMap' (\(Cell x y) -> Cell (x-1) y) u
+moveUnit u MoveE = uMap' (\(Cell x y) -> Cell (x+1) y) u
+moveUnit u MoveSE = uMap (\(Cell x y) -> if even y then Cell x (y+1) else Cell (x+1) (y+1)) u
+moveUnit u MoveSW = uMap (\(Cell x y) -> if even y then Cell (x-1) (y+1) else Cell x (y+1)) u
+moveUnit _ _ = undefined
+         
 dimensions :: Unit -> (Int, Int, Int, Int)
-dimensions (Unit _ ms) = let xs = [x | Cell x _ <- ms]
-                             ys = [y | Cell _ y <- ms]
+dimensions unit        = let xs = map cellX ms
+                             ys = map cellY ms
+                             ms = uMembers unit
                          in (minimum xs, maximum xs, minimum ys, maximum ys)
 
 dimensionsWithPivot :: Unit -> (Int, Int, Int, Int)
-dimensionsWithPivot u@(Unit (Cell px py) _) =
+dimensionsWithPivot u =
     let (minX, maxX, minY, maxY) = dimensions u
+        (Cell px py) = uPivot u
     in (min minX px, max maxX px, min minY py, max maxY py)
                             
 data Problem = Problem {
@@ -146,7 +228,7 @@ isFilled (Board _ _ b) (Cell x y) = testBit (b V.! y) x
 setFilled :: Board -> Cell -> Board
 setFilled (Board w h b) (Cell x y) = Board w h (update setCell)
   where setCell row = setBit row x
-        update f = b V.// [(y, f (b V.! y))]
+        update f = V.modify (\v -> MV.modify v f y) b
          
 fillCells :: Board -> [Cell] -> Board
 fillCells b cs = foldl' setFilled b cs
@@ -179,7 +261,7 @@ instance FromJSON Cell where
 instance FromJSON Unit where
     parseJSON (Object v) = do pivot <- v .: "pivot"
                               members <- v .: "members"
-                              return (Unit pivot (sort members))
+                              return (makeUnit pivot members)
     parseJSON _ = mzero
     
 
@@ -199,10 +281,10 @@ instance FromJSON Problem where
 
 
 below :: Unit -> Unit -> Bool
-Unit (Cell _ r1) _ `below` Unit (Cell _ r2) _ = r1 > r2
+u1 `below` u2 = cellY (uPivot u1) > cellY (uPivot u2)
 
 distance :: Unit -> Unit -> Int
-distance (Unit p1 _) (Unit p2 _) = cellDistance p1 p2
+distance u1 u2 = cellDistance (uPivot u1) (uPivot u2)
 
 validCell :: Problem -> Cell -> Bool
 validCell p cell@(Cell x y) =
@@ -210,23 +292,23 @@ validCell p cell@(Cell x y) =
      not (isFilled (pFilled p) cell))
 
 validPos :: Problem -> S.HashSet Unit -> Unit -> Bool
-validPos p prev u@(Unit _ ms) = all (validCell p) ms && not (u `S.member` prev)
+validPos p prev u = all (validCell p) (uMembers u) && not (u `S.member` prev)
 
 translate :: Unit -> Int -> Int -> Unit
-translate (Unit p ms) xoffs yoffs =
+translate unit xoffs yoffs =
   let tr  (Cell x y) = Cell (x+xoffs) (y+yoffs)
       tr' (Cell x y) | odd y     = Cell (x+xoffs+1) (y+yoffs)
                      | otherwise = Cell (x+xoffs-1) (y+yoffs)
   in
-     if even yoffs then Unit (tr p) (map tr ms)
-                   else Unit (tr' p) (sort (map tr' ms))
- 
+     if even yoffs then makeUnit' (tr (uPivot unit)) (map tr (uMembers unit))
+                   else uMap tr' unit
+
 lock :: Problem -> Unit -> Problem
-lock problem (Unit _ ms) = problem{pFilled = removeFullRows (fillCells (pFilled problem) ms)}
+lock problem unit = problem{pFilled = removeFullRows (fillCells (pFilled problem) (uMembers unit))}
 
 atBottom :: Problem -> Unit -> Bool
-atBottom problem (Unit _ ms) =
-  any (>= lastRow) [y | (Cell _ y) <- ms]
+atBottom problem unit =
+  any (\(Cell _ y) -> y >= lastRow) (uMembers unit)
   where lastRow = pHeight problem - 1
 
 isFullRow :: Board -> Int -> Bool
@@ -258,23 +340,27 @@ cPIVOT         = '•'
 
                   
 ppUnit :: Unit -> T.Text
-ppUnit u@(Unit p ms) =
+ppUnit u =
   let (minX, maxX, minY, maxY) = dimensionsWithPivot u
       row y = let r = intersperse ' ' [cell (Cell x y) | x <- [minX..maxX]]
               in if odd y then ' ' : r else r
-      cell c | c `elem` ms = if c == p then cPIVOT_ON_UNIT else cUNIT
-             | otherwise   = if c == p then cPIVOT else cEMPTY
+      cell c | c `elem` ms   = if c == p then cPIVOT_ON_UNIT else cUNIT
+             | otherwise     = if c == p then cPIVOT else cEMPTY
+      p = uPivot u
+      ms = uMembers u
   in
      T.concat (intersperse "\n" [T.pack (row n) | n <- [minY..maxY]])
 
 ppBoard :: Problem -> T.Text
 ppBoard p = ppBoardWithUnit p invisibleUnit
-  where invisibleUnit = Unit (Cell (-1) (-1)) []
+  where invisibleUnit = makeUnit (Cell (-1) (-1)) []
 
 ppBoardWithUnit :: Problem -> Unit -> T.Text
-ppBoardWithUnit problem (Unit pivot members) =
+ppBoardWithUnit problem unit =
     T.concat (intersperse "\n" [T.pack (alignedRow y) | y <- [0 .. h-1]])
     where
+       pivot = uPivot unit
+       members = uMembers unit
        w = pWidth problem
        h = pHeight problem
        filled = pFilled problem
@@ -282,7 +368,7 @@ ppBoardWithUnit problem (Unit pivot members) =
                     | otherwise = ' ' : row y
        row y = intersperse ' ' [cell (Cell x y) | x <- [0 .. w-1]]
                
-       cell c | isFilled filled c = if c == pivot then cPIVOT_ON_FILLED else cFILLED
-              | c `elem` members  = if c == pivot then cPIVOT_ON_UNIT else cUNIT
-              | c == pivot        = cPIVOT
-              | otherwise         = cEMPTY
+       cell c | isFilled filled c  = if c == pivot then cPIVOT_ON_FILLED else cFILLED
+              | c `elem` members   = if c == pivot then cPIVOT_ON_UNIT else cUNIT
+              | c == pivot         = cPIVOT
+              | otherwise          = cEMPTY
