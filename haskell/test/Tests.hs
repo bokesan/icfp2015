@@ -36,7 +36,9 @@ main :: IO ()
 main = defaultMain tests
 
 
-
+unit1 :: Unit
+unit1 = makeUnit (Cell 0 0) [Cell 0 0, Cell 1 0]
+       
 tests :: [TF.Test]
 tests = [
         testGroup "QuickCheck Unit" [
@@ -49,13 +51,12 @@ tests = [
                 testProperty "translate" translateBF
                 ],
         testGroup "Point tests Unit" [
-                testCase "simpleMove" ((moveUnit (makeUnit (Cell 1 2) [Cell 4 5]) MoveE)
-                                       @?= (makeUnit (Cell 2 2) [Cell 5 5])),
-
                 -- check random number sequence matches problem specification
                 testCase "random" (assertBool "rng ok"
                                      ([0,24107,16552,12125,9427,13152,21440,3383,6873,16117]
                                       `isPrefixOf` randoms 17)),
+
+                -- testCase "move" (uMembers (moveUnit unit1 MoveE) @?= [Cell 1 0, Cell 2 0]),
 
                 testCase "chant" (chant ["Ei!"] [RotCW, MoveE, MoveSW, MoveW] @?= "dEi!")
                 ]

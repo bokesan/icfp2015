@@ -78,11 +78,11 @@ rotCellCCW center point =
         p = (ccx - dy, ccy - dz, ccz - dx)
     in cubeToOffset p
 
-
+{-
 rotateCW, rotateCCW :: Unit -> Unit
 rotateCW  u = uMapMembers (rotCellCW (uPivot u)) u
 rotateCCW u = uMapMembers (rotCellCCW (uPivot u)) u
-
+-}
 
 times :: Int -> (a -> a) -> a -> a
 n `times` f | n <= 0    = id
@@ -91,24 +91,35 @@ n `times` f | n <= 0    = id
 
 
 -- members are ordered
-data Unit = Unit1 !Cell !Cell
-          | Unit2 !Cell !Cell !Cell
-          | Unit3 !Cell !Cell !Cell !Cell
-          | Unit !Cell [Cell]
-            deriving (Eq, Ord, Show)
+-- pivot and rotations. Rotation is empty list if invalid.
+data BaseUnit = BaseUnit !Cell (V.Vector [Cell]) deriving (Eq, Ord, Show)
 
+instance Hashable BaseUnit where
+    hashWithSalt s (BaseUnit p ms) = s `hashWithSalt` p `hashWithSalt` (ms V.! 0)
+
+-- Possibly confusing performance hack:
+-- Since we are never comparing different units, but only translations/rotations
+-- of one unit, the BaseUnit part is ignored fpr Eq/Ord/Hashable.
+data Unit = Unit !Int !Int !Int !BaseUnit deriving (Show)
+
+instance Eq Unit where
+   (Unit x1 y1 r1 _) == (Unit x2 y2 r2 _) = x1 == x2 && y1 == y2 && r1 == r2
+
+instance Ord Unit where
+  compare (Unit x1 y1 r1 _) (Unit x2 y2 r2 _) =
+    case compare x1 x2 of
+      EQ -> case compare y1 y2 of
+              EQ -> compare r1 r2
+              r' -> r'
+      r  -> r
+    
 uPivot :: Unit -> Cell
-uPivot (Unit p _) = p
-uPivot (Unit1 p _) = p
-uPivot (Unit2 p _ _) = p
-uPivot (Unit3 p _ _ _) = p
+uPivot (Unit xoffs yoffs _ (BaseUnit pivot _)) = translateCell xoffs yoffs pivot
 
 uMembers :: Unit -> [Cell]
-uMembers (Unit1 _ m) = [m]
-uMembers (Unit2 _ m1 m2) = [m1, m2]
-uMembers (Unit3 _ m1 m2 m3) = [m1, m2, m3]
-uMembers (Unit _ ms) = ms
+uMembers (Unit xoffs yoffs rot (BaseUnit _ rs)) = map (translateCell xoffs yoffs) (rs V.! rot)
 
+{-
 uMap, uMap', uMapMembers :: (Cell -> Cell) -> Unit -> Unit
 uMapMembers f (Unit1 p m1) = Unit1 p (f m1)
 uMapMembers f (Unit2 p m1 m2) = let m1' = f m1
@@ -168,35 +179,32 @@ uMap' f (Unit1 p m1)    = Unit1 (f p) (f m1)
 uMap' f (Unit2 p m1 m2) = Unit2 (f p) (f m1) (f m2)
 uMap' f (Unit3 p m1 m2 m3) = Unit3 (f p) (f m1) (f m2) (f m3)
 uMap' f (Unit p ms)     = Unit (f p) (map f ms)
-
+-}
             
 instance Hashable Unit where
-  hashWithSalt s (Unit1 p m1) = s `hashWithSalt` p `hashWithSalt` m1
-  hashWithSalt s (Unit2 p m1 m2) = s `hashWithSalt` p `hashWithSalt` m1 `hashWithSalt` m2
-  hashWithSalt s (Unit3 p m1 m2 m3) = s `hashWithSalt` p `hashWithSalt` m1 `hashWithSalt` m2 `hashWithSalt` m3
-  hashWithSalt s (Unit p ms) = s `hashWithSalt` p `hashWithSalt` ms
+  hashWithSalt s (Unit xo yo r _) = s `hashWithSalt` xo `hashWithSalt` yo
+                                      `hashWithSalt` r
 
-makeUnit, makeUnit' :: Cell -> [Cell] -> Unit
-makeUnit pivot members = case sort members of
-                            [m1] -> Unit1 pivot m1
-                            [m1,m2] -> Unit2 pivot m1 m2
-                            [m1,m2,m3] -> Unit3 pivot m1 m2 m3
-                            ms -> Unit pivot ms
-
-makeUnit' pivot members = case members of
-                            [m1] -> Unit1 pivot m1
-                            [m1,m2] -> Unit2 pivot m1 m2
-                            [m1,m2,m3] -> Unit3 pivot m1 m2 m3
-                            ms -> Unit pivot ms
+makeUnit :: Cell -> [Cell] -> Unit
+makeUnit pivot members = Unit 0 0 0 (BaseUnit pivot (V.fromList rotations))
+  where
+    rot :: [Cell] -> [Cell]
+    rot ms = sort (map (rotCellCW pivot) ms)
+    ms' = sort members
+    rotations = ms' : map validate (tail (take 6 (iterate rot members)))
+    validate r = if r == ms' then [] else r
 
 moveUnit :: Unit -> Move -> Unit
-moveUnit u RotCW  = rotateCW u
-moveUnit u RotCCW = rotateCCW u
-moveUnit u MoveW = uMap' (\(Cell x y) -> Cell (x-1) y) u
-moveUnit u MoveE = uMap' (\(Cell x y) -> Cell (x+1) y) u
-moveUnit u MoveSE = uMap (\(Cell x y) -> if even y then Cell x (y+1) else Cell (x+1) (y+1)) u
-moveUnit u MoveSW = uMap (\(Cell x y) -> if even y then Cell (x-1) (y+1) else Cell x (y+1)) u
-moveUnit _ _ = undefined
+moveUnit (Unit xo yo r b) move =
+   case move of
+      RotCW  -> Unit xo yo ((r+1) `rem` 6) b
+      RotCCW -> Unit xo yo ((r+5) `rem` 6) b
+      MoveW  -> Unit (xo-1) yo r b
+      MoveE  -> Unit (xo+1) yo r b
+      MoveSW | even yo   -> Unit xo     (yo+1) r b
+             | otherwise -> Unit (xo-1) (yo+1) r b
+      MoveSE | even yo   -> Unit xo     (yo+1) r b
+             | otherwise -> Unit (xo+1) (yo+1) r b
          
 dimensions :: Unit -> (Int, Int, Int, Int)
 dimensions unit        = let xs = map cellX ms
@@ -291,17 +299,22 @@ validCell p cell@(Cell x y) =
     (x >= 0 && x < pWidth p && y >= 0 && y < pHeight p &&
      not (isFilled (pFilled p) cell))
 
+validRotation :: Unit -> Bool
+validRotation (Unit _ _ r (BaseUnit _ rs)) = not (null (rs V.! r))
+    
 validPos :: Problem -> S.HashSet Unit -> Unit -> Bool
-validPos p prev u = all (validCell p) (uMembers u) && not (u `S.member` prev)
+validPos p prev u = validRotation u &&
+                    all (validCell p) (uMembers u) &&
+                    not (u `S.member` prev)
+
+translateCell :: Int -> Int -> Cell -> Cell
+translateCell xoffs yoffs (Cell x y)
+   | even yoffs = Cell (x+xoffs)   (y+yoffs)
+   | odd y      = Cell (x+xoffs+1) (y+yoffs)
+   | otherwise  = Cell (x+xoffs-1) (y+yoffs)
 
 translate :: Unit -> Int -> Int -> Unit
-translate unit xoffs yoffs =
-  let tr  (Cell x y) = Cell (x+xoffs) (y+yoffs)
-      tr' (Cell x y) | odd y     = Cell (x+xoffs+1) (y+yoffs)
-                     | otherwise = Cell (x+xoffs-1) (y+yoffs)
-  in
-     if even yoffs then makeUnit' (tr (uPivot unit)) (map tr (uMembers unit))
-                   else uMap tr' unit
+translate (Unit xo yo r b) x y = Unit (xo+x) (yo+y) r b
 
 lock :: Problem -> Unit -> Problem
 lock problem unit = problem{pFilled = removeFullRows (fillCells (pFilled problem) (uMembers unit))}
@@ -322,7 +335,8 @@ removeFullRows b@(Board _ height _) = foldr remove b [0 .. height - 1]
     remRow row (Board w h cs) = Board w h (V.cons 0 (V.take row cs V.++ V.drop (row + 1) cs))
 
 rotations :: Unit -> [Unit]
-rotations u = nub [ (n `times` rotateCW) u | n <- [0..5] ]
+rotations (Unit xoffs yoffs _ b@(BaseUnit _ rs)) =
+   [ Unit xoffs yoffs r b | (r,ms) <- V.toList (V.indexed rs), not (null ms) ]
 
 cells :: Problem -> [Cell]
 cells problem = [ Cell x y | x <- [0..lastCol], y <- [0..lastRow] ]
