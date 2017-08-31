@@ -139,6 +139,10 @@ function unitEquals(a, b) {
     return true;
 }
 
+function isUnitUnit(unit) {
+    return unit.members.length == 1 && cellEquals(unit.members[0], unit.pivot);
+}
+
 
 function isValidLocation(unit) {
     var i;
@@ -307,6 +311,7 @@ function loadProblem(f) {
         solution = [];
         prevPositions = [];
         setSize();
+        determineStrategy();
         drawMap();
         drawUnit();
     };
@@ -367,7 +372,7 @@ function drawPivot(ctx) {
 function baseCoord(c) {
     var xoff = size * Math.sqrt(3) / 2;
     var yoff = 0.75 * size;
-    var x = -5;
+    var x = 0;
     if (c.y & 1) {
         x += xoff / 2;
     }
@@ -392,8 +397,8 @@ function drawMap() {
     var xoff = size * Math.sqrt(3) / 2;
     var yoff = 0.75 * size;
     var m = document.getElementById('map');
-    m.width = xoff * width + xoff / 2;
-    m.height = yoff * (height + 0.333);
+    m.width = xoff * width + xoff / 2 + 5;
+    m.height = yoff * (height + 0.333) + 2;
     var c = m.getContext('2d');
     var row, col, w;
     var xy, cell;
@@ -465,19 +470,6 @@ function spawnUnit(index) {
 }
 
 
-function translateCell(cell, x, y) {
-    if (y & 1) {
-        // odd number of rows - have to correct for row "indentation"
-        if (cell.y & 1) {
-            ;
-        } else {
-            x -= 1;
-        }
-    }
-    return { x: cell.x + x, y: cell.y + y };
-}
-
-
 //                E,     SE,     SW,      W,        NW,       NE
 const OFFS =  [  [ 1, 0,  0, 1,   -1, 1,   -1, 0,    -1, -1,   0, -1 ],   // even row
                  [ 1, 0,  1, 1,   0, 1,    -1, 0,    0, -1,    1, -1 ] ]; // odd row
@@ -498,11 +490,31 @@ function moveUnit(unit, direction) {
 }
 
 
-function translateUnit(unit, x, y) {
-    return {
-             pivot: translateCell(unit.pivot, x, y),
-             members: unit.members.map(function (c) { return translateCell(c, x, y); })
-           };
+
+function translateCellOdd(cell, xoffs, yoffs) {
+    if (cell.y & 1) {
+	return { x: cell.x + xoffs + 1, y: cell.y + yoffs };
+    } else {
+	return { x: cell.x + xoffs - 1, y: cell.y + yoffs };
+    }
+}
+
+function translateCellEven(cell, xoffs, yoffs) {
+    return { x: cell.x + xoffs, y: cell.y + yoffs };
+}
+
+function translateUnit(unit, xoffs, yoffs) {
+    if (yoffs & 1) {
+	return {
+            pivot: translateCellOdd(unit.pivot, xoffs, yoffs),
+            members: unit.members.map(function (c) { return translateCellOdd(c, xoffs, yoffs); })
+        };
+    } else {
+	return {
+            pivot: translateCellEven(unit.pivot, xoffs, yoffs),
+            members: unit.members.map(function (c) { return translateCellEven(c, xoffs, yoffs); })
+        };
+    }
 }
 
 function rotateCCW(unit) {
@@ -570,10 +582,16 @@ function nextUnit() {
 
 var solution = [];
 
-var WORDS = [["ei!", "243"],
-             ["ia! ia!", "4435443"],
-             ["r'lyeh", "135224"],
-             ["yuggoth", "2k445k4"]
+var WORDS = [
+             ["Necronomicon", "522155554255"],
+             ["YogSothoth",   "254k5k45k5"],
+             ["Monkeyboy",    "555k22252"],
+             ["Planet 10",    "35452k513"],
+             ["Yoyodyne",     "25251252"],
+             ["Ia! Ia!",      "4435443"],
+             ["Yuggoth",      "2k445k4"],
+             ["R'lyeh",       "135224"],
+             ["Ei!",          "243"]
             ]; 
 
 function chant(s, words) {
@@ -688,6 +706,78 @@ function computeMove_simple() {
     }
 }
 
+function filledInRow(y) {
+    var n = 0;
+    problem.filled.forEach(function (cell) {
+        if (cell.y === y) {
+            n++;
+        }
+    });
+    return n;
+}
+
+function mostFilledRow() {
+    var row = problem.height - 1;
+    var filled = 0;
+    for (var y = 0; y < problem.height; y++) {
+        var n = filledInRow(y);
+        if (n > filled) {
+            filled = n;
+            row = y;
+        }
+    }
+    return row;
+}
+
+function firstFreeCellInRow(y) {
+    for (var x = 0; x < problem.width; x++) {
+        var c = {x:x,y:y};
+        if (!isFilled(c)) {
+            return c;
+        }
+    }
+}
+
+
+function computeMove_unit() {
+    var y = mostFilledRow();
+    var dest = firstFreeCellInRow(y);
+    var b;
+
+    var dx = dest.x - unit.pivot.x;
+    var dy = dest.y - unit.pivot.y;
+
+    if (dx === 0 && dy === 0) {
+        // since this is the first free cell, move west to lock
+        tryMoveX(DIR_W, true);
+    }
+    else if (dy === 0) {
+        if (dx < 0) {
+            b = tryMoveX(DIR_W, true);
+        } else {
+            b = tryMoveX(DIR_E, true);
+        }
+    }
+    else if (dx < 0) {
+        // prefer West
+        if (unit.pivot.x - dest.x > dest.y - unit.pivot.y) {
+            b = tryMove(DIR_W) || tryMove(DIR_SW) || tryMove(DIR_E) || tryMove(DIR_SE);
+        } else {
+            b = tryMove(DIR_SW) || tryMove(DIR_W) || tryMove(DIR_E) || tryMove(DIR_SE);
+        }
+    }
+    else {
+        // prefer East
+        if (dest.x - unit.pivot.x > dest.y - unit.pivot.y) {
+            b = tryMove(DIR_E) || tryMove(DIR_SE) || tryMove(DIR_W) || tryMove(DIR_SW);
+        } else {
+            b = tryMove(DIR_SE) || tryMove(DIR_E) || tryMove(DIR_W) || tryMove(DIR_SW);
+        }
+    }
+    if (!b) tryMoveX(DIR_SW, true);
+}
+
+
 function myClone(obj) {
     return JSON.parse(JSON.stringify(obj));
 }
@@ -760,8 +850,19 @@ function computeMove_opt() {
     }
 }
 
+var computeMoveFun;
+
+function determineStrategy() {
+    if (problem.units.every(isUnitUnit)) {
+        computeMoveFun = computeMove_unit;
+    } else {
+        computeMoveFun = computeMove_opt;
+    }
+}
+
+
 function computeMove() {
-    computeMove_simple();
+    computeMoveFun();
 }
 
 
